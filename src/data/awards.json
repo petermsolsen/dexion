@@ -1,0 +1,66 @@
+[
+  {
+    "year": "1984",
+    "event": "Venlo Meeting",
+    "demo": "Digital Dreams",
+    "position": "2nd Place",
+    "category": "C64 Demo",
+    "gradient": "from-blue-500 to-cyan-500"
+  },
+  {
+    "year": "1986",
+    "event": "Assembly",
+    "demo": "Plasma Storm",
+    "position": "3rd Place",
+    "category": "C64 Demo",
+    "gradient": "from-purple-500 to-blue-500"
+  },
+  {
+    "year": "1987",
+    "event": "The Party",
+    "demo": "Copper Madness",
+    "position": "1st Place",
+    "category": "Amiga Demo",
+    "gradient": "from-yellow-500 to-orange-500"
+  },
+  {
+    "year": "1991",
+    "event": "The Party",
+    "demo": "Beyond Reality",
+    "position": "1st Place",
+    "category": "Amiga Demo",
+    "gradient": "from-yellow-500 to-orange-500"
+  },
+  {
+    "year": "1991",
+    "event": "Assembly",
+    "demo": "Liquid Dreams",
+    "position": "1st Place",
+    "category": "Amiga Demo",
+    "gradient": "from-yellow-500 to-orange-500"
+  },
+  {
+    "year": "1992",
+    "event": "The Gathering",
+    "demo": "Chrome Dimension",
+    "position": "2nd Place",
+    "category": "Amiga Demo",
+    "gradient": "from-blue-500 to-cyan-500"
+  },
+  {
+    "year": "1993",
+    "event": "The Party",
+    "demo": "Nexus",
+    "position": "1st Place",
+    "category": "Amiga Demo",
+    "gradient": "from-yellow-500 to-orange-500"
+  },
+  {
+    "year": "1993",
+    "event": "Assembly",
+    "demo": "Vector Nights",
+    "position": "1st Place",
+    "category": "64k Intro",
+    "gradient": "from-yellow-500 to-orange-500"
+  }
+]

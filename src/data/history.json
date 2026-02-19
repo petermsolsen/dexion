@@ -1,0 +1,51 @@
+[
+  {
+    "year": "1982",
+    "title": "The Beginning",
+    "description": "Founded by a group of passionate coders on the C64. Started with cracktros and simple demos, quickly gaining respect in the early demoscene.",
+    "platform": "C64",
+    "color": "from-cyan-500 to-blue-500"
+  },
+  {
+    "year": "1984",
+    "title": "Breakthrough",
+    "description": "Released \"Digital Dreams\" - our breakthrough demo featuring advanced raster effects and original SID music. Established Dexion as a major C64 crew.",
+    "platform": "C64",
+    "color": "from-blue-500 to-purple-500"
+  },
+  {
+    "year": "1986",
+    "title": "C64 Mastery",
+    "description": "Peak of our C64 era. Released \"Plasma Storm\" and other technical masterpieces, pushing the 64 to its absolute limits with innovative coding techniques.",
+    "platform": "C64",
+    "color": "from-purple-500 to-pink-500"
+  },
+  {
+    "year": "1987",
+    "title": "Amiga Transition",
+    "description": "Expanded to Amiga platform while maintaining C64 releases. \"Copper Madness\" showcased our mastery of the Copper coprocessor and brought international attention.",
+    "platform": "Amiga",
+    "color": "from-pink-500 to-orange-500"
+  },
+  {
+    "year": "1991",
+    "title": "Golden Years",
+    "description": "Peak of our creativity on Amiga. Released multiple award-winning demos including \"Beyond Reality\" and \"Liquid Dreams\". Collaborated with legendary musicians.",
+    "platform": "Amiga",
+    "color": "from-orange-500 to-red-500"
+  },
+  {
+    "year": "1993",
+    "title": "Innovation",
+    "description": "Pioneered new techniques: texture mapping on Amiga, advanced plasma effects, and synchronized demo-music transitions. Released \"Nexus\".",
+    "platform": "Amiga",
+    "color": "from-red-500 to-pink-500"
+  },
+  {
+    "year": "1995",
+    "title": "Final Release",
+    "description": "Released our swan song \"Farewell to Silicon\" - a tribute to the machines and community that shaped us. Members moved to PC and professional careers.",
+    "platform": "Amiga",
+    "color": "from-pink-500 to-purple-500"
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "title": "Digital Dreams",
+    "year": "1984",
+    "platform": "C64",
+    "type": "Demo",
+    "description": "Our breakthrough demo featuring advanced raster bars, sprite multiplexing, and original SID chip music. Won 2nd place at Venlo Meeting.",
+    "credits": ["Code: Matrix", "Music: Soundwave", "Graphics: Pixel"],
+    "gradient": "from-cyan-500 to-blue-500"
+  },
+  {
+    "title": "Plasma Storm",
+    "year": "1986",
+    "platform": "C64",
+    "type": "Demo",
+    "description": "Mesmerizing plasma effects using creative character mode tricks. One of the smoothest plasma implementations on C64.",
+    "credits": ["Code: Matrix", "Music: Soundwave"],
+    "gradient": "from-purple-500 to-pink-500"
+  },
+  {
+    "title": "Copper Madness",
+    "year": "1987",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Revolutionary copper effects demo that pushed the Amiga hardware to its limits. Our first Amiga release.",
+    "credits": ["Code: Guru", "Music: Synth Master", "Graphics: Art Attack"],
+    "gradient": "from-orange-500 to-red-500"
+  },
+  {
+    "title": "Beyond Reality",
+    "year": "1991",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Award-winning megademo with 3D vectors, morphing objects, and atmospheric soundtrack. Won 1st place at The Party.",
+    "credits": ["Code: Guru & Coder X", "Music: Synth Master", "Graphics: Pixel & Art Attack"],
+    "gradient": "from-pink-500 to-purple-500"
+  },
+  {
+    "title": "Liquid Dreams",
+    "year": "1991",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Experimental demo exploring fluid dynamics and distortion effects. Featured original tracked modules.",
+    "credits": ["Code: Coder X", "Music: Synth Master", "Graphics: Art Attack"],
+    "gradient": "from-blue-500 to-cyan-500"
+  },
+  {
+    "title": "Chrome Dimension",
+    "year": "1992",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Metallic reflections and chrome-mapped objects. Pushed texture mapping on standard Amiga 500.",
+    "credits": ["Code: Guru", "Music: Synth Master & Guest", "Graphics: Pixel"],
+    "gradient": "from-gray-500 to-gray-300"
+  },
+  {
+    "title": "Nexus",
+    "year": "1993",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Our most technically advanced demo. Real-time texture mapping, particle systems, and seamless transitions.",
+    "credits": ["Code: Guru & Matrix", "Music: Soundwave", "Graphics: Pixel & Art Attack"],
+    "gradient": "from-indigo-500 to-purple-500"
+  },
+  {
+    "title": "Vector Nights",
+    "year": "1993",
+    "platform": "Amiga",
+    "type": "64k Intro",
+    "description": "Highly optimized 64k intro with full 3D vector engine and procedurally generated graphics.",
+    "credits": ["Code: Coder X", "Music: Synth Master"],
+    "gradient": "from-green-500 to-teal-500"
+  },
+  {
+    "title": "Farewell to Silicon",
+    "year": "1995",
+    "platform": "Amiga",
+    "type": "Demo",
+    "description": "Our final release - a nostalgic journey through our decade of demos. Combined our best techniques.",
+    "credits": ["All Members", "Special Thanks: The Scene"],
+    "gradient": "from-yellow-500 to-orange-500"
+  }
+]
