@@ -5,39 +5,43 @@
 }
 
 :root {
-  --bg:          #07080f;
-  --surface:     #0c0e1c;
-  --surface-2:   #10122a;
-  --border:      #181b38;
-  --accent:      #00e87a;
-  --accent-dim:  rgba(0, 232, 122, 0.10);
-  --accent-glow: rgba(0, 232, 122, 0.22);
-  --c64:         #d4a52a;
-  --c64-dim:     rgba(212, 165, 42, 0.12);
-  --c64-border:  rgba(212, 165, 42, 0.30);
-  --amiga:       #e03565;
-  --amiga-dim:   rgba(224, 53, 101, 0.12);
-  --amiga-border:rgba(224, 53, 101, 0.30);
-  --text:        #b4c4e8;
-  --muted:       #485070;
-  --white:       #eef2ff;
-  --gold:        #ffd700;
-  --silver:      #9898b4;
-  --bronze:      #c07830;
-  --mono:        'Courier New', 'Lucida Console', monospace;
-  --radius:      10px;
-  --tr:          0.22s ease;
+  --bg:           #040810;
+  --surface:      #080d1e;
+  --surface-2:    #0c1230;
+  --border:       #1a2458;
+  --accent:       #ffb000;
+  --accent-dim:   rgba(255, 176, 0, 0.10);
+  --accent-glow:  rgba(255, 176, 0, 0.50);
+  --c64:          #7788ff;
+  --c64-dim:      rgba(119, 136, 255, 0.13);
+  --c64-border:   rgba(119, 136, 255, 0.55);
+  --amiga:        #ff3377;
+  --amiga-dim:    rgba(255, 51, 119, 0.13);
+  --amiga-border: rgba(255, 51, 119, 0.55);
+  --text:         #88bb88;
+  --muted:        #486848;
+  --white:        #cceecc;
+  --gold:         #ffdd00;
+  --silver:       #99aacc;
+  --bronze:       #cc8833;
+  --mono:         'Courier New', 'Lucida Console', monospace;
+  --radius:       0px;
+  --tr:           0.12s ease;
 
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Courier New', 'Lucida Console', monospace;
   font-size: 16px;
   line-height: 1.6;
   color: var(--text);
   background-color: var(--bg);
   scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
 }
 
 body  { min-height: 100vh; }
 a     { color: inherit; text-decoration: none; }
 img   { display: block; max-width: 100%; }
 ul    { list-style: none; }
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
