@@ -1,0 +1,44 @@
+[
+  {
+    "year": "1982",
+    "platform": "C64",
+    "title": "The Beginning",
+    "desc": "Founded by a group of passionate coders on the C64. Started with cracktros and simple demos, quickly gaining respect in the early demoscene."
+  },
+  {
+    "year": "1984",
+    "platform": "C64",
+    "title": "Breakthrough",
+    "desc": "Released \"Digital Dreams\" — our breakthrough demo featuring advanced raster effects and original SID music. Established Dexion as a major C64 crew."
+  },
+  {
+    "year": "1986",
+    "platform": "C64",
+    "title": "C64 Mastery",
+    "desc": "Peak of our C64 era. Released \"Plasma Storm\" and other technical masterpieces, pushing the 64 to its absolute limits with innovative coding techniques."
+  },
+  {
+    "year": "1987",
+    "platform": "Amiga",
+    "title": "Amiga Transition",
+    "desc": "Expanded to Amiga while maintaining C64 releases. \"Copper Madness\" showcased our mastery of the Copper coprocessor and brought international attention."
+  },
+  {
+    "year": "1991",
+    "platform": "Amiga",
+    "title": "Golden Years",
+    "desc": "Peak of our creativity. Released multiple award-winning demos including \"Beyond Reality\" and \"Liquid Dreams\". Collaborated with legendary musicians."
+  },
+  {
+    "year": "1993",
+    "platform": "Amiga",
+    "title": "Innovation",
+    "desc": "Pioneered new techniques: texture mapping on Amiga, advanced plasma effects, and synchronized demo-music transitions. Released \"Nexus\"."
+  },
+  {
+    "year": "1995",
+    "platform": "Amiga",
+    "title": "Final Release",
+    "desc": "Released our swan song \"Farewell to Silicon\" — a tribute to the machines and community that shaped us. Members moved to PC and professional careers."
+  }
+]

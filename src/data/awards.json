@@ -1,0 +1,10 @@
+[
+  { "year": "1984", "place": 2, "demo": "Digital Dreams",   "event": "Venlo Meeting", "type": "C64 Demo"   },
+  { "year": "1986", "place": 3, "demo": "Plasma Storm",     "event": "Assembly",      "type": "C64 Demo"   },
+  { "year": "1987", "place": 1, "demo": "Copper Madness",   "event": "The Party",     "type": "Amiga Demo" },
+  { "year": "1991", "place": 1, "demo": "Beyond Reality",   "event": "The Party",     "type": "Amiga Demo" },
+  { "year": "1991", "place": 1, "demo": "Liquid Dreams",    "event": "Assembly",      "type": "Amiga Demo" },
+  { "year": "1992", "place": 2, "demo": "Chrome Dimension", "event": "The Gathering", "type": "Amiga Demo" },
+  { "year": "1993", "place": 1, "demo": "Nexus",            "event": "The Party",     "type": "Amiga Demo" },
+  { "year": "1993", "place": 1, "demo": "Vector Nights",    "event": "Assembly",      "type": "64k Intro"  }
+]
