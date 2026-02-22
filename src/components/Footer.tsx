@@ -1,3 +1,5 @@
+import logo from '../assets/logo.png'
+
 const YEAR = new Date().getFullYear()
 
 export default function Footer() {
@@ -6,13 +8,13 @@ export default function Footer() {
       <div className="footer-inner">
 
         <div className="footer-brand">
-          <span className="logo">DEXION</span>
+          <img src={logo} alt="Dexion" className="logo" />
           <p className="footer-tagline">
             A pioneering demo group from the golden era of home computing.
             Pushing boundaries on C64 and Amiga from 1982 to 1995.
           </p>
           <div className="footer-platforms">
-            <span className="badge c64-badge">Commodore 64 · 1982–1987</span>
+            <span className="badge c64-badge">Commodore 64 · 1982–1887</span>
             <span className="badge amiga-badge">Commodore Amiga · 1987–1995</span>
           </div>
         </div>

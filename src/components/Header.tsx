@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import logo from '../assets/logo.png'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -6,7 +7,9 @@ export default function Header() {
 
   return (
     <header className="header">
-      <a href="#hero" className="logo" onClick={close}>DEXION</a>
+      <a href="#hero" onClick={close}>
+        <img src={logo} alt="Dexion" className="logo" />
+      </a>
 
       <nav className={`nav${menuOpen ? ' open' : ''}`}>
         <a href="#history"      onClick={close}>History</a>
