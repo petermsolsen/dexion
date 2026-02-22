@@ -22,6 +22,7 @@ export default function Header() {
         className={`hamburger${menuOpen ? ' open' : ''}`}
         onClick={() => setMenuOpen(o => !o)}
         aria-label="Toggle menu"
+
       >
         <span /><span /><span />
       </button>
