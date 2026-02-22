@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -5,35 +7,60 @@
 }
 
 :root {
-  --bg:           #040810;
-  --surface:      #080d1e;
-  --surface-2:    #0c1230;
-  --border:       #1a2458;
-  --accent:       #ffb000;
-  --accent-dim:   rgba(255, 176, 0, 0.10);
-  --accent-glow:  rgba(255, 176, 0, 0.50);
-  --c64:          #7788ff;
-  --c64-dim:      rgba(119, 136, 255, 0.13);
-  --c64-border:   rgba(119, 136, 255, 0.55);
-  --amiga:        #ff3377;
-  --amiga-dim:    rgba(255, 51, 119, 0.13);
-  --amiga-border: rgba(255, 51, 119, 0.55);
-  --text:         #88bb88;
-  --muted:        #486848;
-  --white:        #cceecc;
-  --gold:         #ffdd00;
-  --silver:       #99aacc;
-  --bronze:       #cc8833;
-  --mono:         'Courier New', 'Lucida Console', monospace;
-  --radius:       0px;
-  --tr:           0.12s ease;
+  /* Backgrounds */
+  --bg:            #000000;
+  --surface:       rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.10);
+  --surface-2:     rgba(255, 255, 255, 0.03);
 
-  font-family: 'Courier New', 'Lucida Console', monospace;
+  /* Borders */
+  --border:          rgba(255, 255, 255, 0.10);
+  --border-cyan:     rgba(6, 182, 212, 0.20);
+  --border-pink:     rgba(236, 72, 153, 0.20);
+  --border-pink-30:  rgba(236, 72, 153, 0.30);
+
+  /* Brand colors */
+  --cyan:     #22d3ee;
+  --cyan-500: #06b6d4;
+  --pink:     #f472b6;
+  --pink-500: #ec4899;
+  --orange:   #fb923c;
+  --purple:   #a855f7;
+
+  /* Platform aliases (used by existing badge classes) */
+  --c64:          #22d3ee;
+  --c64-dim:      rgba(6, 182, 212, 0.13);
+  --c64-border:   rgba(6, 182, 212, 0.35);
+  --amiga:        #f472b6;
+  --amiga-dim:    rgba(236, 72, 153, 0.13);
+  --amiga-border: rgba(236, 72, 153, 0.35);
+
+  /* Text */
+  --text:  #d1d5db;
+  --muted: #9ca3af;
+  --white: #ffffff;
+
+  /* Medals */
+  --gold:   #f59e0b;
+  --silver: #9ca3af;
+  --bronze: #c07830;
+
+  /* Typography */
+  --heading-font: 'Space Grotesk', system-ui, sans-serif;
+  --body-font:    'Inter', system-ui, sans-serif;
+  --mono:         'Courier New', monospace;
+
+  /* UI */
+  --radius: 12px;
+  --tr:     0.3s ease;
+
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.6;
   color: var(--text);
   background-color: var(--bg);
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
 }
 
 body  { min-height: 100vh; }
@@ -41,7 +68,17 @@ a     { color: inherit; text-decoration: none; }
 img   { display: block; max-width: 100%; }
 ul    { list-style: none; }
 
-@keyframes blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+@keyframes gridMove {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(50px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+@keyframes bounce-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
 }
