@@ -1,21 +1,24 @@
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import membersData from '../data/members.json'
-import type { Member } from '../types'
+import type { Member, Filter, WorkPlatform } from '../types'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
+type MemberWithPlatform = Member & { platform: WorkPlatform }
+
 const data = membersData as Record<string, Member[]>
 
+const allMembers: MemberWithPlatform[] = [
+  ...data.C64.map(m => ({ ...m, platform: 'C64' as WorkPlatform })),
+  ...data.Amiga.map(m => ({ ...m, platform: 'Amiga' as WorkPlatform })),
+]
+
+const FILTERS: Filter[] = ['All', 'C64', 'Amiga']
+
 export default function MembersPage() {
-  const { platform } = useParams<{ platform: string }>()
-
-  if (platform !== 'c64' && platform !== 'amiga') {
-    return <Navigate to="/" replace />
-  }
-
-  const key = platform === 'c64' ? 'C64' : 'Amiga'
-  const members = data[key]
-  const isAmiga = platform === 'amiga'
+  const [filter, setFilter] = useState<Filter>('All')
+  const filtered = filter === 'All' ? allMembers : allMembers.filter(m => m.platform === filter)
 
   return (
     <>
@@ -26,24 +29,39 @@ export default function MembersPage() {
 
             <div className="members-page-header">
               <div className="hero-badge">
-                <span className={`badge ${isAmiga ? 'amiga-badge' : 'c64-badge'}`}>{key}</span>
+                <span className="badge c64-badge">C64</span>
+                &amp;
+                <span className="badge amiga-badge">Amiga</span>
                 Section Members
               </div>
               <span className="section-label">The Crew</span>
-              <p className="section-title">
-                {isAmiga
-                  ? "The talented crew behind Dexion's Amiga productions from 1987 to 1995"
-                  : "The pioneers who defined Dexion's Commodore 64 identity from 1982 to 1988"}
-              </p>
+              <p className="section-title">The people behind Dexion's productions from 1982 to 1995</p>
+            </div>
+
+            <div className="filter-row">
+              {FILTERS.map(p => (
+                <button
+                  key={p}
+                  className={[
+                    'filter-btn',
+                    filter === p  ? 'active'       : '',
+                    p === 'C64'   ? 'filter-c64'   : '',
+                    p === 'Amiga' ? 'filter-amiga' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => setFilter(p)}
+                >
+                  {p === 'All' ? 'All Sections' : p}
+                </button>
+              ))}
             </div>
 
             <div className="members-grid">
-              {members.map(m => (
+              {filtered.map(m => (
                 <div
-                  key={m.handle}
-                  className={`member-card ${isAmiga ? 'member-amiga' : 'member-c64'}`}
+                  key={m.platform + m.handle}
+                  className={`member-card ${m.platform === 'C64' ? 'member-c64' : 'member-amiga'}`}
                 >
-                  <div className={`member-avatar ${isAmiga ? 'avatar-amiga' : 'avatar-c64'}`}>
+                  <div className={`member-avatar ${m.platform === 'C64' ? 'avatar-c64' : 'avatar-amiga'}`}>
                     <span className="member-initial">{m.handle[0].toUpperCase()}</span>
                   </div>
                   <div className="member-body">
@@ -52,7 +70,7 @@ export default function MembersPage() {
                       <span className="member-real-name">{m.realName}</span>
                     </div>
                     <div className="member-meta">
-                      <span className={`badge ${isAmiga ? 'amiga-badge' : 'c64-badge'}`}>
+                      <span className={`badge ${m.platform === 'C64' ? 'c64-badge' : 'amiga-badge'}`}>
                         {m.role}
                       </span>
                       <span className="member-years">{m.years}</span>
@@ -64,14 +82,8 @@ export default function MembersPage() {
               ))}
             </div>
 
-            <div className="members-footer-row">
+            <div className="members-footer-row" style={{ marginTop: '2rem' }}>
               <Link to="/" className="back-link">← Back to Archive</Link>
-              <Link
-                to={`/members/${isAmiga ? 'c64' : 'amiga'}`}
-                className={`switch-link ${isAmiga ? 'switch-c64' : 'switch-amiga'}`}
-              >
-                View {isAmiga ? 'C64' : 'Amiga'} Members →
-              </Link>
             </div>
 
           </div>

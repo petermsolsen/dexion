@@ -1,15 +1,15 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header       from './components/Header'
 import Hero         from './components/Hero'
 import History      from './components/History'
 import Works        from './components/Works'
 import Achievements from './components/Achievements'
 import Footer       from './components/Footer'
-import MembersPage  from './pages/MembersPage'
-import WorksPage        from './pages/WorksPage'
+import MembersPage     from './pages/MembersPage'
+import WorksPage       from './pages/WorksPage'
 import AchievementsPage from './pages/AchievementsPage'
-import HistoryPage      from './pages/HistoryPage'
+import HistoryPage     from './pages/HistoryPage'
 
 function HomePage() {
   return (
@@ -30,12 +30,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"                   element={<HomePage />} />
-        <Route path="/members"            element={<Navigate to="/members/c64" replace />} />
-        <Route path="/members/:platform"  element={<MembersPage />} />
-        <Route path="/works"              element={<WorksPage />} />
-        <Route path="/achievements"       element={<AchievementsPage />} />
-        <Route path="/history"            element={<HistoryPage />} />
+        <Route path="/"            element={<HomePage />} />
+        <Route path="/history"     element={<HistoryPage />} />
+        <Route path="/works"       element={<WorksPage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/members"     element={<MembersPage />} />
       </Routes>
     </BrowserRouter>
   )
