@@ -6,7 +6,6 @@ const stats = statsData as unknown as Stat[]
 export default function Hero() {
   return (
     <section className="hero" id="hero">
-      <div className="scanlines" />
       <div className="container hero-inner">
 
         <div className="hero-badge">
