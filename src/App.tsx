@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Header       from './components/Header'
 import Hero         from './components/Hero'
 import History      from './components/History'
@@ -31,6 +31,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/"                   element={<HomePage />} />
+        <Route path="/members"            element={<Navigate to="/members/c64" replace />} />
         <Route path="/members/:platform"  element={<MembersPage />} />
         <Route path="/works"              element={<WorksPage />} />
         <Route path="/achievements"       element={<AchievementsPage />} />
