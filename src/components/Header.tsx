@@ -14,7 +14,7 @@ export default function Header() {
 
       <nav className={`nav${menuOpen ? ' open' : ''}`}>
         <Link to="/"             onClick={close}>Home</Link>
-        <Link to="/history"      onClick={close}>History</Link>
+
         <Link to="/works"        onClick={close}>Works</Link>
         <Link to="/achievements" onClick={close}>Achievements</Link>
         <Link to="/members"      onClick={close}>Members</Link>

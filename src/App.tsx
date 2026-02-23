@@ -9,7 +9,6 @@ import Footer       from './components/Footer'
 import MembersPage     from './pages/MembersPage'
 import WorksPage       from './pages/WorksPage'
 import AchievementsPage from './pages/AchievementsPage'
-import HistoryPage     from './pages/HistoryPage'
 
 function HomePage() {
   return (
@@ -31,7 +30,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/"            element={<HomePage />} />
-        <Route path="/history"     element={<HistoryPage />} />
+
         <Route path="/works"       element={<WorksPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/members"     element={<MembersPage />} />
