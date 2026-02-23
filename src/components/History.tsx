@@ -16,9 +16,11 @@ export default function History() {
             <div className="timeline-item" key={h.year + h.title}>
               <div className="timeline-year">
                 <span className="timeline-year-num">{h.year}</span>
-                <span className={`badge ${h.platform === 'C64' ? 'c64-badge' : 'amiga-badge'}`}>
-                  {h.platform}
-                </span>
+                {(Array.isArray(h.platform) ? h.platform : [h.platform]).map(p => (
+                  <span key={p} className={`badge ${p === 'C64' ? 'c64-badge' : 'amiga-badge'}`}>
+                    {p}
+                  </span>
+                ))}
               </div>
               <div className="timeline-card">
                 <h3>{h.title}</h3>

@@ -3,7 +3,7 @@
     "year": "1982",
     "platform": "C64",
     "title": "The Beginning",
-    "desc": "A group of friends founded a group Commodore 64 Demo group called \"Spacexpress\"."
+    "desc": "A group of friends founded a Commodore 64 Demo group called \"Spacexpress\"."
   },
   {
     "year": "1985",
@@ -43,7 +43,7 @@
   },
   {
     "year": "1990",
-    "platform": "Amiga & C64",
+    "platform": ["C64", "Amiga"],
     "title": "Biggest Demo Party",
     "desc": "We held our biggest demo party in Odense Denmark. Dexion X-Mas Party 1990 with 800 participants. And the biggist prizes so far. Amiga first prize was US $1000 and C64 first prize was US $500."
   },

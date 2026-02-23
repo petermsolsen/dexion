@@ -9,7 +9,7 @@ export interface Stat {
 
 export interface HistoryEntry {
   year: string
-  platform: WorkPlatform
+  platform: WorkPlatform | WorkPlatform[]
   title: string
   desc: string
 }
