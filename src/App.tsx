@@ -9,6 +9,7 @@ import Footer       from './components/Footer'
 import MembersPage  from './pages/MembersPage'
 import WorksPage        from './pages/WorksPage'
 import AchievementsPage from './pages/AchievementsPage'
+import HistoryPage      from './pages/HistoryPage'
 
 function HomePage() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/members/:platform"  element={<MembersPage />} />
         <Route path="/works"              element={<WorksPage />} />
         <Route path="/achievements"       element={<AchievementsPage />} />
+        <Route path="/history"            element={<HistoryPage />} />
       </Routes>
     </BrowserRouter>
   )
