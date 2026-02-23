@@ -30,3 +30,12 @@ export interface Work {
   desc: string
   crew: string[]
 }
+
+export interface Member {
+  handle: string
+  role: string
+  realName: string
+  years: string
+  country: string
+  bio: string
+}

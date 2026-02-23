@@ -24,6 +24,14 @@
     "crew": ["Code: Guru", "Music: Synth Master", "Graphics: Art Attack"]
   },
   {
+    "title": "Dexion Megademo 1",
+    "platform": "Amiga",
+    "type": "Mega Demo",
+    "year": "1988",
+    "desc": "Revolutionary effects demo that pushed the Amiga hardware to its limits. Our first Mega demo release on Amiga that won a competition.",
+    "crew": ["Code: Mr. Mega Mind, Liteace, Pet", "Music: Future Freak", "Graphics: Tox"]
+  },
+  {
     "title": "Beyond Reality",
     "platform": "Amiga",
     "type": "Demo",

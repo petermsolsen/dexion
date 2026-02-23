@@ -1,0 +1,126 @@
+{
+  "C64": [
+    {
+      "handle": "Matrix",
+      "role": "Code",
+      "realName": "Andreas K.",
+      "years": "1982–1988",
+      "country": "Germany",
+      "bio": "The technical backbone of Dexion's C64 era. Matrix pioneered raster tricks, sprite multiplexing, and the custom interrupt routines that became group staples across dozens of releases."
+    },
+    {
+      "handle": "Soundwave",
+      "role": "Music",
+      "realName": "Stefan M.",
+      "years": "1982–1990",
+      "country": "Germany",
+      "bio": "Dexion's founding musician on the SID chip. Soundwave's distinctive arpeggios and driving basslines defined the group's audio identity throughout the C64 years and well into the Amiga era."
+    },
+    {
+      "handle": "Pixel",
+      "role": "Graphics",
+      "realName": "Michael V.",
+      "years": "1982–1995",
+      "country": "Netherlands",
+      "bio": "The longest-serving artist in the group. Pixel mastered character-set art and sprite design on C64 before transitioning to Amiga HAM and AGA modes, bridging both eras of Dexion history."
+    },
+    {
+      "handle": "Rambo",
+      "role": "Organizer",
+      "realName": "Thomas H.",
+      "years": "1982–1987",
+      "country": "Sweden",
+      "bio": "Founding member and organizer. Rambo maintained the group's contact network, coordinated disk-trading routes across Europe, and kept the crew motivated through the formative early years."
+    },
+    {
+      "handle": "Vector",
+      "role": "Code",
+      "realName": "Joost B.",
+      "years": "1984–1988",
+      "country": "Netherlands",
+      "bio": "Joined to tackle 3D mathematics. Vector wrote the group's first vector engine for C64, opening the door to object demonstrations and scrolling polygon landscapes that wowed party crowds."
+    }
+  ],
+  "Amiga": [
+    {
+      "handle": "Guru",
+      "role": "Code",
+      "realName": "Lars P.",
+      "years": "1986–1995",
+      "country": "Denmark",
+      "bio": "Dexion's Amiga lead coder from the very first release. Guru mastered the copper list, blitter, and custom chip set, producing the group's most technically acclaimed effects across every major production."
+    },
+    {
+      "handle": "Synth Master",
+      "role": "Music",
+      "realName": "Henrik A.",
+      "years": "1987–1995",
+      "country": "Sweden",
+      "bio": "Prolific tracker musician responsible for the atmospheric soundtracks on most Amiga releases. Synth Master's modules were traded widely on bulletin boards and remain beloved across the scene."
+    },
+    {
+      "handle": "Art Attack",
+      "role": "Graphics",
+      "realName": "Carlo B.",
+      "years": "1987–1995",
+      "country": "Italy",
+      "bio": "The visual powerhouse of the Amiga section. Art Attack painted full-screen pictures, logos, and transitions that pushed the Amiga palette to its absolute limits on both OCS and AGA hardware."
+    },
+    {
+      "handle": "Coder X",
+      "role": "Code",
+      "realName": "Kristian N.",
+      "years": "1989–1995",
+      "country": "Norway",
+      "bio": "Specialised in 3D engines and mathematical effects. Coder X wrote the texture mapper and particle system that powered several of the group's most celebrated final-era productions."
+    },
+    {
+      "handle": "Mr. Mega Mind",
+      "role": "Code",
+      "realName": "Peter W.",
+      "years": "1987–1993",
+      "country": "Germany",
+      "bio": "Co-author of Dexion Megademo 1. Mr. Mega Mind contributed scroll routines, part frameworks, and the fast loader system that was reused across multiple subsequent releases."
+    },
+    {
+      "handle": "Future Freak",
+      "role": "Music",
+      "realName": "François D.",
+      "years": "1987–1992",
+      "country": "France",
+      "bio": "Brought a distinctly European electronic influence to the Amiga section. Future Freak's tracks layered complex polyrhythms with melodic hooks that were unusual for the era."
+    },
+    {
+      "handle": "Tox",
+      "role": "Graphics",
+      "realName": "Tobias S.",
+      "years": "1987–1990",
+      "country": "Germany",
+      "bio": "Early Amiga artist who designed the iconic Dexion logo seen in Megademo 1's intro screen. Tox retired from the scene in 1990 to pursue a career in commercial graphic design."
+    },
+    {
+      "handle": "Liteace",
+      "role": "Code",
+      "realName": "Li T.",
+      "years": "1987–1990",
+      "country": "Sweden",
+      "bio": "Part-coder on the first Megademo. Liteace specialised in audio replay routines and hardware-level interrupt management, ensuring perfect music synchronisation across hardware variants."
+    },
+    {
+      "handle": "Pet",
+      "role": "Code",
+      "realName": "Petri K.",
+      "years": "1987–1990",
+      "country": "Finland",
+      "bio": "Finnish coder known for compact, highly optimised 68000 assembly routines. Pet contributed the copper plasma and smooth-scrolling effects in Megademo 1 before departing to work solo."
+    },
+    {
+      "handle": "Pixel",
+      "role": "Graphics",
+      "realName": "Michael V.",
+      "years": "1987–1995",
+      "country": "Netherlands",
+      "bio": "Transitioning seamlessly from C64 to Amiga, Pixel continued as the group's senior artist. His HAM-mode landscapes and chrome-mapped objects in Chrome Dimension were considered groundbreaking."
+    }
+  ]
+}

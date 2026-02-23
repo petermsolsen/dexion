@@ -3,37 +3,49 @@
     "year": "1982",
     "platform": "C64",
     "title": "The Beginning",
-    "desc": "Founded by a group of passionate coders on the C64. Started with cracktros and simple demos, quickly gaining respect in the early demoscene."
+    "desc": "A group of friends founded a group Commodore 64 Demo group called \"Spacexpress\"."
   },
   {
-    "year": "1984",
+    "year": "1985",
     "platform": "C64",
-    "title": "Breakthrough",
-    "desc": "Released \"Digital Dreams\" — our breakthrough demo featuring advanced raster effects and original SID music. Established Dexion as a major C64 crew."
+    "title": "Another group established",
+    "desc": "To childhood friends started a second group called \"Danish Demo Duo\"."
   },
   {
-    "year": "1986",
+    "year": "1987",
     "platform": "C64",
-    "title": "C64 Mastery",
-    "desc": "Peak of our C64 era. Released \"Plasma Storm\" and other technical masterpieces, pushing the 64 to its absolute limits with innovative coding techniques."
+    "title": "New group established",
+    "desc": "The group expanded and changed name to \"Dexion\"."
+  },
+  {
+  "year": "1987",
+  "platform": "C64",
+  "title": "Peak of our C64 era",
+  "desc": "Released many technical masterpieces, pushing the 64 to its absolute limits with innovative coding techniques and releasing stunning music."
+  },
+  {
+    "year": "1988",
+    "platform": "C64",
+    "title": "First Demo Party",
+    "desc": "Our first C64 demoparty was held with success at a local school in Nykøbing Sj."
   },
   {
     "year": "1987",
     "platform": "Amiga",
     "title": "Amiga Transition",
-    "desc": "Expanded to Amiga while maintaining C64 releases. \"Copper Madness\" showcased our mastery of the Copper coprocessor and brought international attention."
+    "desc": "Expanded to Amiga while maintaining C64 releases. Both our C64 Amiga releases gave us international attention."
   },
   {
-    "year": "1991",
+    "year": "1988-1991",
     "platform": "Amiga",
     "title": "Golden Years",
-    "desc": "Peak of our creativity. Released multiple award-winning demos including \"Beyond Reality\" and \"Liquid Dreams\". Collaborated with legendary musicians."
+  "desc": "Peak of our creativity. Released multiple award-winning demos including \"Megademo 1\" and \"Megademo 2\". Winning competition at Meetings."
   },
   {
-    "year": "1993",
-    "platform": "Amiga",
-    "title": "Innovation",
-    "desc": "Pioneered new techniques: texture mapping on Amiga, advanced plasma effects, and synchronized demo-music transitions. Released \"Nexus\"."
+    "year": "1990",
+    "platform": "Amiga & C64",
+    "title": "Biggest Demo Party",
+    "desc": "We held our biggest demo party in Odense Denmark. Dexion X-Mas Party 1990 with 800 participants. And the biggist prizes so far. Amiga first prize was US $1000 and C64 first prize was US $500."
   },
   {
     "year": "1995",

@@ -644,6 +644,149 @@ main { padding-top: 80px; }
 }
 .achieve-stat .stat-value { font-size: 2rem; }
 
+/* ─── Nav member link tints ──────────────────────────────────── */
+
+.nav .nav-c64:hover   { color: #22d3ee; }
+.nav .nav-amiga:hover { color: #f472b6; }
+
+/* ─── Members Page ───────────────────────────────────────────── */
+
+.members-page { padding-top: 6rem; }
+
+.members-page-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.members-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.member-card {
+  display: flex;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  transition: background var(--tr), transform var(--tr);
+  align-items: flex-start;
+}
+.member-card:hover { background: rgba(255, 255, 255, 0.09); transform: scale(1.02); }
+.member-c64:hover   { border-color: rgba(6, 182, 212, 0.35); }
+.member-amiga:hover { border-color: rgba(236, 72, 153, 0.35); }
+
+.member-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-c64   { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+.avatar-amiga { background: linear-gradient(135deg, #ec4899, #fb923c); }
+
+.member-initial {
+  font-family: var(--heading-font);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.member-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.member-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.member-handle {
+  font-family: var(--heading-font);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.member-real-name {
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.member-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.member-years {
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.member-country {
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.member-bio {
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.members-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.back-link {
+  font-family: var(--body-font);
+  font-size: 0.9rem;
+  color: #d1d5db;
+  transition: color var(--tr);
+  text-decoration: none;
+}
+.back-link:hover { color: #fff; }
+
+.switch-link {
+  font-family: var(--body-font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #fff;
+  transition: opacity var(--tr), transform var(--tr);
+}
+.switch-link:hover { opacity: 0.85; transform: translateX(3px); }
+.switch-c64   { background: linear-gradient(to right, #06b6d4, #3b82f6); box-shadow: 0 4px 15px rgba(6,182,212,0.35); }
+.switch-amiga { background: linear-gradient(to right, #ec4899, #fb923c); box-shadow: 0 4px 15px rgba(236,72,153,0.35); }
+
 /* ─── Footer ─────────────────────────────────────────────────── */
 
 .footer {
@@ -738,6 +881,7 @@ main { padding-top: 80px; }
   .achievements-cols  { grid-template-columns: 1fr; }
   .achieve-stats      { grid-template-columns: repeat(2, 1fr); }
   .footer-inner       { grid-template-columns: 1fr; gap: 2rem; }
+  .members-grid       { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -758,7 +902,7 @@ main { padding-top: 80px; }
     overflow: hidden;
     transition: max-height 0.3s ease, padding 0.3s ease;
   }
-  .nav.open { max-height: 280px; padding: 0.75rem 0; }
+  .nav.open { max-height: 420px; padding: 0.75rem 0; }
   .nav a    { display: block; padding: 0.75rem 1.75rem; width: 100%; border-radius: 0; }
 
   .hero          { padding: 3rem 1.25rem; }
@@ -767,6 +911,7 @@ main { padding-top: 80px; }
   .sec, .sec-alt { padding: 3.5rem 1.25rem; }
 
   .works-grid    { grid-template-columns: 1fr; }
+  .members-grid  { grid-template-columns: 1fr; }
 
   .timeline      { padding-left: 2rem; }
   .timeline-item::before { left: calc(-2rem - 7px); }
