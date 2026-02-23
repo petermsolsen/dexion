@@ -16,7 +16,7 @@ export default function Header() {
 
       <nav className={`nav${menuOpen ? ' open' : ''}`}>
         <a href={`${base}#history`}      onClick={close}>History</a>
-        <a href={`${base}#works`}        onClick={close}>Works</a>
+        <Link to="/works"                onClick={close}>Works</Link>
         <a href={`${base}#achievements`} onClick={close}>Achievements</a>
         <Link to="/members/c64"   onClick={close} className="nav-c64">C64 Members</Link>
         <Link to="/members/amiga" onClick={close} className="nav-amiga">Amiga Members</Link>

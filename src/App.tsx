@@ -7,6 +7,7 @@ import Works        from './components/Works'
 import Achievements from './components/Achievements'
 import Footer       from './components/Footer'
 import MembersPage  from './pages/MembersPage'
+import WorksPage    from './pages/WorksPage'
 
 function HomePage() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
       <Routes>
         <Route path="/"                   element={<HomePage />} />
         <Route path="/members/:platform"  element={<MembersPage />} />
+        <Route path="/works"              element={<WorksPage />} />
       </Routes>
     </BrowserRouter>
   )

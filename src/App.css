@@ -651,7 +651,8 @@ main { padding-top: 80px; }
 
 /* ─── Members Page ───────────────────────────────────────────── */
 
-.members-page { padding-top: 6rem; }
+.members-page,
+.works-page { padding-top: 6rem; }
 
 .members-page-header {
   text-align: center;
