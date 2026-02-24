@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/peter/WebstormProjects/dexion\" && npx tsc --noEmit 2>&1)",
+      "Bash(cd /c/Users/peter/WebstormProjects/dexion && npm run build 2>&1)",
+      "WebFetch(domain:www.dexion.dk)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(tail:*)"
+    ]
+  }
+}

@@ -1,0 +1,4164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADF Analyzer — Amiga Disk Format Inspector</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Electrolize:wght@400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wb-bg: #aaaaaa;
+    --wb-blue: #0055aa;
+    --wb-orange: #ff8800;
+    --wb-black: #111111;
+    --wb-white: #eeeeee;
+    --wb-dark: #222244;
+    --wb-mid: #444466;
+    --wb-light: #7777aa;
+    --wb-green: #00ff88;
+    --wb-amber: #ffcc00;
+    --wb-red: #ff4444;
+    --wb-panel: #1a1a2e;
+    --wb-panel2: #16213e;
+    --wb-border: #334466;
+    --wb-text: #ccd6f6;
+    --wb-dim: #7799aa;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui: 'Electrolize', sans-serif;
+    --font-title: 'Orbitron', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a1a;
+    font-family: var(--font-ui);
+    color: var(--wb-text);
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* CRT scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Phosphor glow bg */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: 
+      radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,50,120,0.15) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 20% 80%, rgba(0,80,180,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TITLE BAR ── */
+  #titlebar {
+    background: linear-gradient(135deg, #001133 0%, #002266 40%, #001144 100%);
+    border-bottom: 2px solid var(--wb-orange);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 20px rgba(0,85,170,0.5);
+  }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+  }
+  .logo-mark span {
+    display: block;
+    border-radius: 2px;
+    animation: logoPulse 4s ease-in-out infinite;
+  }
+  .logo-mark span:nth-child(1) { background: var(--wb-orange); }
+  .logo-mark span:nth-child(2) { background: var(--wb-white); animation-delay: .5s; }
+  .logo-mark span:nth-child(3) { background: var(--wb-blue); animation-delay: 1s; }
+  .logo-mark span:nth-child(4) { background: var(--wb-orange); animation-delay: 1.5s; }
+
+  @keyframes logoPulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  #titlebar h1 {
+    font-family: var(--font-title);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--wb-white);
+    text-transform: uppercase;
+  }
+  #titlebar h1 span { color: var(--wb-orange); }
+
+  .title-sub {
+    font-size: 10px;
+    color: var(--wb-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-left: 4px;
+    margin-top: 2px;
+  }
+
+  .spacer { flex: 1; }
+
+  .status-pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: 1px;
+  }
+  .status-pill.idle {
+    color: var(--wb-dim);
+    border-color: var(--wb-border);
+    background: rgba(0,0,0,0.3);
+  }
+  .status-pill.loaded {
+    color: var(--wb-green);
+    border-color: var(--wb-green);
+    background: rgba(0,255,136,0.08);
+    animation: statusGlow 2s ease-in-out infinite;
+  }
+  .status-pill.error {
+    color: var(--wb-red);
+    border-color: var(--wb-red);
+    background: rgba(255,68,68,0.1);
+    animation: errorPulse 1s ease-in-out infinite;
+  }
+  @keyframes errorPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  @keyframes statusGlow {
+    0%,100% { box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+    50% { box-shadow: 0 0 16px rgba(0,255,136,0.4); }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  #main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr 300px;
+    grid-template-rows: 1fr;
+    gap: 1px;
+    background: #000;
+    overflow: hidden;
+  }
+
+  .panel {
+    background: var(--wb-panel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    background: linear-gradient(90deg, var(--wb-blue) 0%, var(--wb-dark) 100%);
+    padding: 8px 14px;
+    font-family: var(--font-title);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--wb-white);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--wb-border);
+  }
+  .panel-header .ph-icon {
+    width: 6px; height: 6px;
+    background: var(--wb-orange);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--wb-orange);
+    flex-shrink: 0;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--wb-border) transparent;
+  }
+
+  /* ── DROP ZONE ── */
+  #dropzone {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,8,28,0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.4s ease;
+  }
+  #dropzone.hidden { opacity: 0; pointer-events: none; }
+
+  .drop-ring {
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    border: 2px dashed var(--wb-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: ringRotate 8s linear infinite;
+  }
+  @keyframes ringRotate {
+    to { transform: rotate(360deg); }
+  }
+  .drop-ring::before {
+    content: '';
+    position: absolute; inset: 8px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0,85,170,0.4);
+    animation: ringRotate 4s linear infinite reverse;
+  }
+  .drop-inner {
+    transform: rotate(0deg); /* counter the parent rotation */
+    animation: ringRotate 8s linear infinite reverse;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .disk-icon {
+    width: 64px; height: 64px;
+    position: relative;
+  }
+  .disk-icon svg { width: 100%; height: 100%; }
+
+  .drop-title {
+    font-family: var(--font-title);
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: var(--wb-white);
+    text-align: center;
+  }
+  .drop-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--wb-dim);
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .drop-formats {
+    display: flex;
+    gap: 8px;
+  }
+  .fmt-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border: 1px solid var(--wb-border);
+    border-radius: 3px;
+    color: var(--wb-dim);
+    background: rgba(0,0,0,0.3);
+  }
+
+  #file-input { display: none; }
+  .browse-btn {
+    font-family: var(--font-title);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 28px;
+    background: transparent;
+    border: 1px solid var(--wb-orange);
+    color: var(--wb-orange);
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .browse-btn:hover {
+    background: var(--wb-orange);
+    color: #000;
+    box-shadow: 0 0 20px rgba(255,136,0,0.4);
+  }
+
+  #dropzone.dragover .drop-ring {
+    border-color: var(--wb-green);
+    box-shadow: 0 0 40px rgba(0,255,136,0.3);
+    animation-duration: 1s;
+  }
+
+  /* ── LEFT: FILE TREE ── */
+  .tree-node {
+    margin: 1px 0;
+  }
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--wb-text);
+    transition: background 0.15s;
+    border: 1px solid transparent;
+  }
+  .tree-item:hover {
+    background: rgba(0,85,170,0.2);
+    border-color: rgba(0,85,170,0.3);
+  }
+  .tree-item.selected {
+    background: rgba(0,85,170,0.35);
+    border-color: var(--wb-blue);
+    color: #fff;
+  }
+  .tree-item.dir { color: var(--wb-amber); }
+  .tree-item.file { color: var(--wb-text); }
+  .tree-icon { font-size: 14px; flex-shrink: 0; }
+  .tree-size {
+    margin-left: auto;
+    color: var(--wb-dim);
+    font-size: 10px;
+  }
+  .tree-children {
+    margin-left: 16px;
+    border-left: 1px solid var(--wb-border);
+    padding-left: 8px;
+  }
+
+  /* ── CENTER: MAIN VIEW ── */
+  #center-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tab-bar {
+    display: flex;
+    background: var(--wb-panel2);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+  }
+  .tab {
+    font-family: var(--font-title);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 10px 18px;
+    cursor: pointer;
+    color: var(--wb-dim);
+    border-right: 1px solid var(--wb-border);
+    text-transform: uppercase;
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+  }
+  .tab:hover { color: var(--wb-text); background: rgba(255,255,255,0.03); }
+  .tab.active {
+    color: var(--wb-orange);
+    border-bottom-color: var(--wb-orange);
+    background: rgba(255,136,0,0.05);
+  }
+
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--wb-border) transparent;
+  }
+
+  /* ── DISK MAP ── */
+  #track-map {
+    padding: 16px;
+  }
+  .track-map-title {
+    font-family: var(--font-title);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--wb-dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .track-grid {
+    display: grid;
+    grid-template-columns: repeat(22, 14px);
+    gap: 2px;
+    width: fit-content;
+  }
+  .track-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .track-cell:hover {
+    transform: scale(1.4);
+    z-index: 10;
+    box-shadow: 0 0 10px rgba(255,255,255,0.35);
+  }
+  .track-cell.boot { background: var(--wb-orange); }
+  .track-cell.root { background: var(--wb-amber); }
+  .track-cell.bitmap { background: #ff44ff; }
+  .track-cell.data { background: var(--wb-blue); }
+  .track-cell.free { background: var(--wb-border); }
+  .track-cell.dir-block { background: var(--wb-green); }
+  .track-cell.dircache { background: #00cccc; }
+  .track-cell.selected-cell {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+    z-index: 5;
+  }
+  /* Checksum corruption indicator — red corner triangle */
+  .track-cell.chk-bad::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 0 5px 5px 0;
+    border-color: transparent var(--wb-red) transparent transparent;
+  }
+  /* Chain member highlight */
+  .track-cell.chain-member {
+    outline: 1px solid rgba(255,204,0,0.9);
+    outline-offset: 0px;
+    z-index: 4;
+  }
+  .track-cell.chain-member.chain-head {
+    outline: 2px solid #fff;
+    outline-offset: 0px;
+    z-index: 6;
+  }
+  @keyframes chainPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .track-cell.chain-member { animation: chainPulse 1.6s ease-in-out infinite; }
+  .track-cell.chain-member.chain-head { animation: none; }
+
+  .map-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--wb-dim);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* ── HEX VIEWER ── */
+  #hex-view {
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .hex-row {
+    display: flex;
+    gap: 8px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    transition: background 0.1s;
+  }
+  .hex-row:hover { background: rgba(0,85,170,0.15); }
+  .hex-addr {
+    color: var(--wb-orange);
+    width: 60px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .hex-bytes {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+  }
+  .hex-b {
+    width: 24px;
+    text-align: center;
+    color: var(--wb-text);
+  }
+  .hex-b.zero { color: var(--wb-border); }
+  .hex-b.ascii-print { color: var(--wb-green); }
+  .hex-sep { color: var(--wb-border); width: 8px; text-align: center; }
+  .hex-ascii {
+    color: var(--wb-amber);
+    width: 130px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .hex-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--wb-panel2);
+    border-top: 1px solid var(--wb-border);
+    flex-shrink: 0;
+  }
+  .hex-ctrl-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--wb-border);
+    color: var(--wb-text);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hex-ctrl-btn:hover {
+    background: var(--wb-blue);
+    border-color: var(--wb-blue);
+  }
+  .hex-ctrl-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+  .hex-page-info {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-dim);
+    flex: 1;
+    text-align: center;
+  }
+
+  /* ── BOOT BLOCK ANALYSIS ── */
+  #boot-analysis {
+    padding: 16px;
+  }
+  .analysis-section {
+    margin-bottom: 20px;
+  }
+  .analysis-title {
+    font-family: var(--font-title);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--wb-orange);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--wb-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .analysis-title::before {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--wb-orange);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--wb-orange);
+    flex-shrink: 0;
+  }
+  .kv-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 4px 12px;
+  }
+  .kv-key {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-dim);
+    padding: 4px 0;
+    align-self: center;
+  }
+  .kv-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--wb-text);
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    border-left: 2px solid var(--wb-border);
+    word-break: break-all;
+  }
+  .kv-val.highlight { border-left-color: var(--wb-green); color: var(--wb-green); }
+  .kv-val.warn { border-left-color: var(--wb-amber); color: var(--wb-amber); }
+  .kv-val.error { border-left-color: var(--wb-red); color: var(--wb-red); }
+  .kv-val.info { border-left-color: var(--wb-blue); color: #88aaff; }
+
+  /* ── RIGHT: INFO PANEL ── */
+  #right-panel { }
+
+  .info-block {
+    margin-bottom: 12px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .info-block-header {
+    background: rgba(0,85,170,0.15);
+    padding: 6px 10px;
+    font-family: var(--font-title);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--wb-dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--wb-border);
+  }
+  .info-block-body {
+    padding: 8px 10px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: var(--font-mono);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 10px; color: var(--wb-dim); }
+  .stat-value { font-size: 11px; color: var(--wb-text); }
+  .stat-value.green { color: var(--wb-green); }
+  .stat-value.amber { color: var(--wb-amber); }
+  .stat-value.orange { color: var(--wb-orange); }
+
+  .usage-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--wb-border);
+    border-radius: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .usage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wb-blue), var(--wb-green));
+    border-radius: 4px;
+    transition: width 0.8s ease;
+    box-shadow: 0 0 8px rgba(0,255,136,0.3);
+  }
+
+  /* ── SECTOR DETAIL ── */
+  .sector-detail {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-text);
+    line-height: 1.6;
+  }
+  .sector-detail .label { color: var(--wb-dim); }
+
+  /* ── BLOCK INSPECTOR ── */
+  .block-inspector {
+    margin-top: 8px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bi-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--wb-border);
+  }
+  .bi-sector-num {
+    font-family: var(--font-title);
+    font-size: 11px;
+    color: var(--wb-orange);
+    letter-spacing: 1px;
+  }
+  .bi-type-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+  .bi-type-tag.file   { color: #88aaff; border-color: #335588; background: rgba(0,50,120,0.3); }
+  .bi-type-tag.dir    { color: var(--wb-green); border-color: #225533; background: rgba(0,80,40,0.3); }
+  .bi-type-tag.root   { color: var(--wb-amber); border-color: #554400; background: rgba(60,40,0,0.3); }
+  .bi-type-tag.data   { color: var(--wb-blue); border-color: #224466; background: rgba(0,40,80,0.2); }
+  .bi-type-tag.ext    { color: #cc88ff; border-color: #553366; background: rgba(50,0,70,0.3); }
+  .bi-type-tag.bitmap { color: #ff88ff; border-color: #553355; background: rgba(60,0,60,0.3); }
+  .bi-type-tag.boot   { color: var(--wb-orange); border-color: #553300; background: rgba(70,30,0,0.3); }
+  .bi-type-tag.free   { color: var(--wb-dim); border-color: var(--wb-border); }
+  .bi-type-tag.dc     { color: #00cccc; border-color: #006666; background: rgba(0,60,60,0.3); }
+  .bi-chk-badge {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 1px;
+    border: 1px solid;
+  }
+  .bi-chk-badge.ok  { color: var(--wb-green); border-color: var(--wb-green); background: rgba(0,255,136,0.07); }
+  .bi-chk-badge.bad { color: var(--wb-red);   border-color: var(--wb-red);   background: rgba(255,50,50,0.1); animation: badgeFlash 1.2s ease-in-out infinite; }
+  .bi-chk-badge.na  { color: var(--wb-dim);   border-color: var(--wb-border); }
+  @keyframes badgeFlash { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .bi-fields {
+    padding: 6px 0;
+  }
+  .bi-field {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 10px;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+  }
+  .bi-field:last-child { border-bottom: none; }
+  .bi-field:hover { background: rgba(0,85,170,0.1); }
+  .bi-field-offset {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--wb-orange);
+    opacity: 0.6;
+    width: 32px;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .bi-field-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--wb-dim);
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .bi-field-value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-text);
+    flex: 1;
+    word-break: break-all;
+  }
+  .bi-field-value.link {
+    color: #88aaff;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: rgba(136,170,255,0.4);
+  }
+  .bi-field-value.link:hover { color: #fff; }
+  .bi-field-value.ok    { color: var(--wb-green); }
+  .bi-field-value.warn  { color: var(--wb-amber); }
+  .bi-field-value.err   { color: var(--wb-red); }
+  .bi-field-value.name  { color: var(--wb-amber); font-size: 12px; }
+  .bi-field-value.dim   { color: var(--wb-dim); }
+
+  .bi-section-label {
+    font-family: var(--font-title);
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--wb-dim);
+    padding: 6px 10px 3px;
+    text-transform: uppercase;
+    border-top: 1px solid var(--wb-border);
+    margin-top: 2px;
+  }
+
+  /* Chain panel */
+  .bi-chain-panel {
+    padding: 8px 10px;
+    border-top: 1px solid var(--wb-border);
+    background: rgba(0,0,0,0.2);
+  }
+  .bi-chain-title {
+    font-family: var(--font-title);
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--wb-amber);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bi-chain-entries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+  .bi-chain-entry {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .bi-chain-entry.head  { border-color: #fff; color: #fff; background: rgba(255,255,255,0.08); }
+  .bi-chain-entry.body  { border-color: rgba(136,170,255,0.4); color: #88aaff; }
+  .bi-chain-entry.ext   { border-color: rgba(200,136,255,0.4); color: #cc88ff; }
+  .bi-chain-entry.bad   { border-color: rgba(255,60,60,0.6); color: var(--wb-red); }
+  .bi-chain-entry:hover { background: rgba(0,85,170,0.3); border-color: var(--wb-blue); color: #fff; }
+  .bi-chain-entry .seq-num { font-size: 8px; opacity: 0.6; }
+  .bi-chain-clear-btn {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    background: transparent;
+    border: 1px solid var(--wb-border);
+    color: var(--wb-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .bi-chain-clear-btn:hover { border-color: var(--wb-orange); color: var(--wb-orange); }
+
+  .bi-ptr-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 4px 0;
+  }
+  .bi-ptr-chip {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 1px 6px;
+    border: 1px solid rgba(0,85,170,0.4);
+    border-radius: 2px;
+    color: #88aaff;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .bi-ptr-chip:hover { background: var(--wb-blue); color: #fff; border-color: var(--wb-blue); }
+  .bi-ptr-chip.zero { color: var(--wb-border); border-color: rgba(255,255,255,0.04); cursor: default; }
+  .bi-ptr-chip.zero:hover { background: transparent; color: var(--wb-border); border-color: rgba(255,255,255,0.04); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    opacity: 0.3;
+  }
+  .empty-state-icon { font-size: 48px; }
+  .empty-state-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--wb-dim);
+    letter-spacing: 2px;
+  }
+
+  /* ── CHECKSUM BADGE ── */
+  .checksum-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    font-weight: bold;
+  }
+  .checksum-badge.ok {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid var(--wb-green);
+    color: var(--wb-green);
+  }
+  .checksum-badge.fail {
+    background: rgba(255,68,68,0.1);
+    border: 1px solid var(--wb-red);
+    color: var(--wb-red);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
+
+  /* ── PROGRESS BAR for loading ── */
+  #load-progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--wb-border);
+    z-index: 200;
+    display: none;
+  }
+  #load-progress .bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wb-blue), var(--wb-green), var(--wb-orange));
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px var(--wb-green);
+  }
+
+  /* Tooltip */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border: 1px solid var(--wb-border);
+    color: var(--wb-text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── IFF OPEN BUTTON in tree ── */
+  .iff-open-btn {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    background: rgba(0,85,170,0.3);
+    border: 1px solid var(--wb-blue);
+    color: #88aaff;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .iff-open-btn:hover {
+    background: var(--wb-blue);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(0,85,170,0.5);
+  }
+  .iff-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    background: rgba(255,136,0,0.15);
+    border: 1px solid rgba(255,136,0,0.4);
+    color: var(--wb-orange);
+    border-radius: 2px;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+
+  /* ── IFF VIEWER MODAL ── */
+  #iff-modal {
+    position: fixed; inset: 0;
+    z-index: 500;
+    background: rgba(0,0,16,0.88);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  #iff-modal.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #iff-window {
+    background: var(--wb-panel);
+    border: 1px solid var(--wb-border);
+    border-top: 2px solid var(--wb-blue);
+    border-radius: 4px;
+    width: min(92vw, 900px);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.8), 0 0 40px rgba(0,50,120,0.3);
+    overflow: hidden;
+    transform: scale(0.96);
+    transition: transform 0.25s ease;
+  }
+  #iff-modal.open #iff-window { transform: scale(1); }
+
+  #iff-titlebar {
+    background: linear-gradient(90deg, var(--wb-blue) 0%, #001155 60%, #000833 100%);
+    padding: 0 12px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    user-select: none;
+    cursor: move;
+  }
+  #iff-titlebar .iff-title {
+    font-family: var(--font-title);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #fff;
+    text-transform: uppercase;
+    flex: 1;
+  }
+  .wb-close-btn {
+    width: 18px; height: 18px;
+    background: var(--wb-orange);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+    color: #000;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    font-family: monospace;
+  }
+  .wb-close-btn:hover { background: #ffbb44; }
+
+  #iff-tabs {
+    display: flex;
+    background: var(--wb-panel2);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+  }
+  .iff-tab {
+    font-family: var(--font-title);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--wb-dim);
+    border-right: 1px solid var(--wb-border);
+    text-transform: uppercase;
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+  }
+  .iff-tab:hover { color: var(--wb-text); }
+  .iff-tab.active { color: var(--wb-orange); border-bottom-color: var(--wb-orange); }
+
+  #iff-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* IFF: IMAGE VIEW */
+  #iff-view-image {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #iff-canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: repeating-conic-gradient(#111 0% 25%, #181828 0% 50%) 0 0 / 20px 20px;
+    overflow: auto;
+    min-height: 200px;
+    position: relative;
+  }
+  #iff-canvas {
+    image-rendering: pixelated;
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+  #iff-anim-overlay {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-text);
+  }
+  .anim-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: transparent;
+    border: 1px solid var(--wb-border);
+    color: var(--wb-text);
+    width: 28px; height: 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .anim-btn:hover { background: var(--wb-blue); border-color: var(--wb-blue); }
+  .anim-btn.active { background: var(--wb-orange); border-color: var(--wb-orange); color: #000; }
+
+  #iff-image-info {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    background: var(--wb-panel2);
+    border-top: 1px solid var(--wb-border);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .img-stat {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--wb-dim);
+  }
+  .img-stat span { color: var(--wb-text); margin-left: 4px; }
+
+  /* IFF: AUDIO VIEW */
+  #iff-view-audio {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 16px;
+    overflow-y: auto;
+  }
+  #iff-waveform-canvas {
+    width: 100%; height: 120px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    display: block;
+  }
+  .audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .audio-play-btn {
+    font-family: var(--font-title);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--wb-green);
+    color: var(--wb-green);
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .audio-play-btn:hover {
+    background: var(--wb-green);
+    color: #000;
+    box-shadow: 0 0 16px rgba(0,255,136,0.3);
+  }
+  .audio-play-btn.playing {
+    background: var(--wb-orange);
+    border-color: var(--wb-orange);
+    color: #000;
+  }
+  .audio-progress {
+    flex: 1;
+    height: 6px;
+    background: var(--wb-border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .audio-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wb-blue), var(--wb-green));
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 6px var(--wb-green);
+  }
+  .audio-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--wb-dim);
+    width: 60px;
+    text-align: right;
+  }
+
+  /* IFF: CHUNK TREE */
+  #iff-view-chunks {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .chunk-node {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin: 2px 0;
+  }
+  .chunk-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.1s;
+  }
+  .chunk-header:hover {
+    background: rgba(0,85,170,0.15);
+    border-color: rgba(0,85,170,0.3);
+  }
+  .chunk-id {
+    font-family: var(--font-title);
+    font-size: 11px;
+    color: var(--wb-orange);
+    width: 60px;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+  .chunk-size {
+    color: var(--wb-dim);
+    width: 70px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .chunk-desc { color: var(--wb-text); flex: 1; }
+  .chunk-hex {
+    color: var(--wb-dim);
+    font-size: 10px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chunk-children {
+    margin-left: 20px;
+    border-left: 1px solid var(--wb-border);
+    padding-left: 8px;
+  }
+
+  /* Palette display */
+  #iff-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 8px 14px;
+    background: var(--wb-panel2);
+    border-top: 1px solid var(--wb-border);
+    flex-shrink: 0;
+    max-height: 60px;
+    overflow: hidden;
+  }
+  .pal-swatch {
+    width: 18px; height: 18px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: default;
+    flex-shrink: 0;
+  }
+  .pal-swatch:hover { transform: scale(1.4); z-index: 10; position: relative; }
+
+  /* Zoom controls */
+  .zoom-controls {
+    position: absolute;
+    top: 8px; right: 8px;
+    display: flex;
+    gap: 4px;
+  }
+  .zoom-btn {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    width: 26px; height: 26px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--wb-border);
+    color: var(--wb-text);
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .zoom-btn:hover { background: var(--wb-blue); border-color: var(--wb-blue); }
+
+  /* VU meter for audio */
+  .vu-meter {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 24px;
+  }
+  .vu-bar {
+    width: 4px;
+    border-radius: 2px;
+    background: var(--wb-green);
+    transition: height 0.05s;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- TITLE BAR -->
+  <div id="titlebar">
+    <div class="logo-mark">
+      <span></span><span></span>
+      <span></span><span></span>
+    </div>
+    <div>
+      <div id="titlebar-h1">
+        <span style="font-family:var(--font-title);font-size:18px;font-weight:900;letter-spacing:4px;color:var(--wb-white)">ADF<span style="color:var(--wb-orange)">LENS</span></span>
+      </div>
+      <div class="title-sub">Amiga Disk Format Inspector</div>
+    </div>
+    <div class="spacer"></div>
+    <div id="status-pill" class="status-pill idle">● NO DISK</div>
+    <label for="file-input" class="browse-btn" style="font-family:var(--font-title);font-size:11px;letter-spacing:2px;padding:8px 16px;background:transparent;border:1px solid var(--wb-orange);color:var(--wb-orange);border-radius:3px;cursor:pointer;text-transform:uppercase;transition:all 0.2s;">
+      INSERT DISK
+    </label>
+    <input type="file" id="file-input" accept=".adf,.adz">
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="main" style="position:relative;">
+
+    <!-- DROP ZONE OVERLAY -->
+    <div id="dropzone">
+      <div class="drop-ring">
+        <div class="drop-inner">
+          <div class="disk-icon">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Floppy disk body -->
+              <rect x="6" y="4" width="52" height="56" rx="4" fill="#223366" stroke="#0055aa" stroke-width="1.5"/>
+              <!-- Metal slider top -->
+              <rect x="18" y="4" width="28" height="14" rx="2" fill="#334477" stroke="#445588" stroke-width="1"/>
+              <rect x="24" y="7" width="16" height="8" rx="1" fill="#556699" stroke="#6677aa" stroke-width="0.5"/>
+              <!-- Label area -->
+              <rect x="10" y="22" width="44" height="28" rx="2" fill="#162040" stroke="#223366" stroke-width="1"/>
+              <!-- Label lines -->
+              <line x1="14" y1="28" x2="50" y2="28" stroke="#334466" stroke-width="1"/>
+              <line x1="14" y1="33" x2="50" y2="33" stroke="#334466" stroke-width="1"/>
+              <line x1="14" y1="38" x2="40" y2="38" stroke="#334466" stroke-width="1"/>
+              <!-- Amiga-style colored bar -->
+              <rect x="10" y="22" width="44" height="4" rx="1" fill="#0055aa" opacity="0.8"/>
+              <!-- Orange accent -->
+              <rect x="10" y="22" width="11" height="4" rx="1" fill="#ff8800"/>
+              <!-- Write protect notch -->
+              <rect x="8" y="44" width="6" height="8" rx="1" fill="#0a0a1a" stroke="#334466" stroke-width="1"/>
+            </svg>
+          </div>
+          <div style="font-family:var(--font-title);font-size:11px;letter-spacing:3px;color:var(--wb-blue);text-align:center">ADF</div>
+        </div>
+      </div>
+      <div class="drop-title">DROP DISK IMAGE</div>
+      <div class="drop-sub">Drag & drop an ADF file here</div>
+      <div class="drop-formats">
+        <span class="fmt-tag">.ADF</span>
+        <span class="fmt-tag">DD · 880 KB</span>
+        <span class="fmt-tag">HD · 1.76 MB</span>
+        <span class="fmt-tag">OFS</span>
+        <span class="fmt-tag">FFS</span>
+        <span class="fmt-tag">OFS+Intl</span>
+        <span class="fmt-tag">FFS+Intl</span>
+        <span class="fmt-tag">+DirCache</span>
+        <span class="fmt-tag">PFS1/2/3</span>
+        <span class="fmt-tag">SFS/SFS2</span>
+      </div>
+      <label for="file-input" class="browse-btn">Browse Files</label>
+    </div>
+
+    <!-- LEFT: FILE TREE -->
+    <div class="panel" id="left-panel">
+      <div class="panel-header">
+        <span class="ph-icon"></span>
+        Volume Contents
+      </div>
+      <div class="panel-body" id="tree-container">
+        <div class="empty-state">
+          <div class="empty-state-icon">💾</div>
+          <div class="empty-state-text">NO DISK LOADED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: ANALYSIS TABS -->
+    <div class="panel" id="center-panel">
+      <div class="tab-bar">
+        <div class="tab active" data-tab="diskmap">Disk Map</div>
+        <div class="tab" data-tab="bootblock">Boot Block</div>
+        <div class="tab" data-tab="hexview">Hex Viewer</div>
+      </div>
+      <!-- DISK MAP -->
+      <div class="tab-content" id="tab-diskmap">
+        <div id="track-map">
+          <div class="empty-state" style="height:300px">
+            <div class="empty-state-icon">🗺️</div>
+            <div class="empty-state-text">AWAITING DISK IMAGE</div>
+          </div>
+        </div>
+      </div>
+      <!-- BOOT BLOCK ANALYSIS -->
+      <div class="tab-content" id="tab-bootblock" style="display:none">
+        <div id="boot-analysis">
+          <div class="empty-state" style="height:300px">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-text">NO ANALYSIS YET</div>
+          </div>
+        </div>
+      </div>
+      <!-- HEX VIEW -->
+      <div class="tab-content" id="tab-hexview" style="display:none;flex-direction:column">
+        <div id="hex-view" style="flex:1">
+          <div class="empty-state" style="height:300px">
+            <div class="empty-state-icon">🔢</div>
+            <div class="empty-state-text">SELECT A SECTOR</div>
+          </div>
+        </div>
+      </div>
+      <!-- Hex controls -->
+      <div class="hex-controls" id="hex-controls" style="display:none">
+        <button class="hex-ctrl-btn" id="hex-prev">◀ PREV</button>
+        <div class="hex-page-info" id="hex-page-info">Sector 0 / —</div>
+        <button class="hex-ctrl-btn" id="hex-next">NEXT ▶</button>
+        <span id="hex-sector-type" class="status-pill idle" style="font-size:9px;padding:3px 8px;margin-left:8px">—</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: DISK INFO -->
+    <div class="panel" id="right-panel">
+      <div class="panel-header">
+        <span class="ph-icon" style="background:var(--wb-green);box-shadow:0 0 6px var(--wb-green)"></span>
+        Disk Properties
+      </div>
+      <div class="panel-body" id="info-container">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-text">NO DATA</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="load-progress"><div class="bar" id="progress-bar"></div></div>
+
+<!-- ══ IFF VIEWER MODAL ══ -->
+<div id="iff-modal">
+  <div id="iff-window">
+    <div id="iff-titlebar">
+      <span style="font-family:var(--font-title);font-size:9px;color:var(--wb-orange);letter-spacing:2px">IFF</span>
+      <span class="iff-title" id="iff-filename">—</span>
+      <span id="iff-type-badge" class="iff-badge">?</span>
+      <button class="wb-close-btn" onclick="closeIFF()">✕</button>
+    </div>
+    <div id="iff-tabs">
+      <div class="iff-tab active" data-iff-tab="preview">Preview</div>
+      <div class="iff-tab" data-iff-tab="chunks">Chunks</div>
+      <div class="iff-tab" data-iff-tab="info">Properties</div>
+    </div>
+    <div id="iff-body">
+      <!-- IMAGE VIEW -->
+      <div id="iff-view-preview" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+        <div id="iff-canvas-wrap">
+          <canvas id="iff-canvas"></canvas>
+          <div class="zoom-controls">
+            <button class="zoom-btn" onclick="iffZoom(2)">+</button>
+            <button class="zoom-btn" id="iff-zoom-label" style="width:auto;padding:0 6px;font-size:10px;cursor:default">1×</button>
+            <button class="zoom-btn" onclick="iffZoom(0.5)">−</button>
+            <button class="zoom-btn" onclick="iffZoom(0)" title="Fit">⊡</button>
+          </div>
+          <div id="iff-anim-overlay" style="display:none">
+            <button class="anim-btn" id="anim-prev-btn" onclick="animStep(-1)">◀</button>
+            <button class="anim-btn active" id="anim-play-btn" onclick="animToggle()">⏸</button>
+            <button class="anim-btn" id="anim-next-btn" onclick="animStep(1)">▶</button>
+            <span id="anim-frame-counter">0 / 0</span>
+            <span style="color:var(--wb-dim)">fps</span>
+            <input type="range" id="anim-fps-slider" min="1" max="30" value="10"
+              style="width:70px;accent-color:var(--wb-orange)" oninput="animSetFps(this.value)">
+            <span id="anim-fps-val">10</span>
+          </div>
+          <!-- Audio view lives here too -->
+          <div id="iff-view-audio" style="display:none;flex:1;flex-direction:column;padding:20px;gap:16px;overflow-y:auto;width:100%;height:100%">
+            <div style="font-family:var(--font-title);font-size:14px;letter-spacing:4px;color:var(--wb-text);text-align:center;padding-top:20px">8SVX AUDIO SAMPLE</div>
+            <canvas id="iff-waveform-canvas" height="120"></canvas>
+            <div class="audio-controls">
+              <button class="audio-play-btn" id="audio-play-btn" onclick="audioToggle()">▶ PLAY</button>
+              <div class="audio-progress"><div class="audio-progress-fill" id="audio-progress-fill"></div></div>
+              <div class="audio-time" id="audio-time-display">0.00s</div>
+              <div class="vu-meter" id="vu-meter"></div>
+            </div>
+            <div id="audio-info-grid" class="kv-grid" style="font-size:11px"></div>
+          </div>
+          <!-- Generic IFF (not ILBM/8SVX/ANIM) -->
+          <div id="iff-view-generic" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:0.5">
+            <div style="font-size:48px">📦</div>
+            <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:2px" id="iff-generic-type">IFF</div>
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--wb-dim)">See Chunks tab for structure</div>
+          </div>
+        </div>
+        <div id="iff-palette" style="display:none"></div>
+        <div id="iff-image-info" style="display:none">
+          <div class="img-stat">Size: <span id="img-size-val">—</span></div>
+          <div class="img-stat">Depth: <span id="img-depth-val">—</span></div>
+          <div class="img-stat">Colors: <span id="img-colors-val">—</span></div>
+          <div class="img-stat">Mode: <span id="img-mode-val">—</span></div>
+          <div class="img-stat">Compression: <span id="img-comp-val">—</span></div>
+          <div class="img-stat">Aspect: <span id="img-aspect-val">—</span></div>
+        </div>
+      </div>
+
+      <!-- CHUNK TREE -->
+      <div id="iff-view-chunks" style="display:none;flex:1;overflow-y:auto;padding:12px"></div>
+
+      <!-- PROPERTIES -->
+      <div id="iff-view-info" style="display:none;flex:1;overflow-y:auto;padding:16px">
+        <div id="iff-props-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────
+//  ADF PARSER
+// ────────────────────────────────────────────────────
+const ADF = {
+  SECTOR_SIZE: 512,
+
+  // ── Disk geometry — set dynamically by detectAndApplyFormat() ───────────────
+  TRACKS: 80,
+  SIDES: 2,
+  SECTORS_PER_TRACK: 11,     // 11 = DD, 22 = HD
+  get TOTAL_SECTORS() { return this.TRACKS * this.SIDES * this.SECTORS_PER_TRACK; },
+  get DISK_SIZE()     { return this.TOTAL_SECTORS * this.SECTOR_SIZE; },
+  get ROOT_BLOCK()    { return Math.floor(this.TOTAL_SECTORS / 2); },  // 880 DD / 1760 HD
+
+  // ── Disk/filesystem type — set by detectAndApplyFormat() ────────────────────
+  DISK_TYPE: 'DD',           // 'DD' | 'HD'
+  FS_KIND:   'OFS',          // human-readable identifier
+  IS_ADOS:   true,           // true = AmigaDOS (OFS/FFS variants), false = PFS/SFS/Unknown
+  IS_FFS:    false,          // fast file system flag (no OFS data-block header)
+  HAS_INTL:  false,          // international mode
+  HAS_DC:    false,          // directory cache
+
+  // ── Block type constants ─────────────────────────────────────────────────────
+  T_HEADER:  2,   // root / dir / file header
+  T_DATA:    8,   // OFS data block
+  T_LIST:    16,  // extension block
+  T_DIRDISK: 33,  // directory-cache block
+
+  ST_ROOT:     1,
+  ST_DIR:      2,
+  ST_FILE:    -3,
+  ST_SOFTLINK: 3,
+  ST_HARDLINK:-4,
+};
+
+
+// ────────────────────────────────────────────────────
+//  FORMAT & GEOMETRY DETECTION
+// ────────────────────────────────────────────────────
+
+const KNOWN_SIZES = {
+  901120:  { tracks:80, sides:2, spt:11, type:'DD' },
+  1802240: { tracks:80, sides:2, spt:22, type:'HD' },
+};
+
+function detectFsKind(data) {
+  const id = String.fromCharCode(data[0], data[1], data[2]);
+  const fl = data[3];
+  if (id === 'DOS') {
+    const v    = fl & 0x07;
+    const ffs  = !!(v & 1);
+    const intl = !!(v & 2);
+    const dc   = !!(v & 4);
+    const name = (ffs ? 'FFS' : 'OFS') + (intl ? ' + Intl' : '') + (dc ? ' + DirCache' : '');
+    return { kind: name, isAdos: true, isFfs: ffs, hasIntl: intl, hasDc: dc };
+  }
+  if (id === 'PFS') {
+    const name = fl === 2 ? 'PFS2' : fl === 3 ? 'PFS3' : 'PFS1';
+    return { kind: name, isAdos: false, isFfs: false, hasIntl: false, hasDc: false };
+  }
+  if (id === 'PDS') {
+    return { kind: 'PFS3', isAdos: false, isFfs: false, hasIntl: false, hasDc: false };
+  }
+  if (id === 'SFS') {
+    const name = fl === 0 ? 'SFS v1' : fl === 1 ? 'SFS2 v2' : `SFS v${fl}`;
+    return { kind: name, isAdos: false, isFfs: false, hasIntl: false, hasDc: false };
+  }
+  return { kind: `Unknown (${id}\\x${fl.toString(16).padStart(2,'0')})`, isAdos: false, isFfs: false, hasIntl: false, hasDc: false };
+}
+
+function detectAndApplyFormat(buf) {
+  const geo = KNOWN_SIZES[buf.byteLength];
+  if (geo) {
+    ADF.TRACKS = geo.tracks; ADF.SIDES = geo.sides;
+    ADF.SECTORS_PER_TRACK = geo.spt; ADF.DISK_TYPE = geo.type;
+  } else {
+    ADF.TRACKS = 80; ADF.SIDES = 2;
+    ADF.SECTORS_PER_TRACK = buf.byteLength >= 1500000 ? 22 : 11;
+    ADF.DISK_TYPE = ADF.SECTORS_PER_TRACK === 22 ? 'HD' : 'DD';
+  }
+  const data = new Uint8Array(buf);
+  const fs = detectFsKind(data);
+  ADF.FS_KIND = fs.kind; ADF.IS_ADOS = fs.isAdos;
+  ADF.IS_FFS = fs.isFfs; ADF.HAS_INTL = fs.hasIntl; ADF.HAS_DC = fs.hasDc;
+}
+
+function readPfsVolumeName() {
+  try {
+    const base = 2 * ADF.SECTOR_SIZE;
+    let len = diskView.getUint8(base + 40);
+    if (len > 0 && len < 32) {
+      let s = '';
+      for (let i = 0; i < len; i++) {
+        const c = diskView.getUint8(base + 41 + i);
+        if (c < 32 || c > 126) { s = ''; break; }
+        s += String.fromCharCode(c);
+      }
+      if (s.length > 0) return s;
+    }
+    let s2 = '';
+    for (let i = 0; i < 31; i++) {
+      const c = diskView.getUint8(base + 8 + i);
+      if (!c) break;
+      if (c < 32 || c > 126) { s2 = ''; break; }
+      s2 += String.fromCharCode(c);
+    }
+    if (s2.length > 1) return s2;
+  } catch(e) {}
+  return '(unnamed)';
+}
+
+function readSfsVolumeName() {
+  try {
+    const base = 2 * ADF.SECTOR_SIZE;
+    let s = '';
+    for (let i = 0; i < 63; i++) {
+      const c = diskView.getUint8(base + 32 + i);
+      if (!c) break;
+      if (c < 32 || c > 126) { s = ''; break; }
+      s += String.fromCharCode(c);
+    }
+    if (s.length > 1) return s;
+  } catch(e) {}
+  return '(unnamed)';
+}
+
+let diskData = null;
+let diskView = null;
+let currentSector = 0;
+let sectorTypes = []; // array of type strings per sector
+let blockChecksumValid = {}; // sector -> bool, only set for non-free blocks
+let activeChain = []; // sectors currently highlighted as a chain
+
+function u8(sector, offset) {
+  return diskView.getUint8(sector * ADF.SECTOR_SIZE + offset);
+}
+function u16be(sector, offset) {
+  return diskView.getUint16(sector * ADF.SECTOR_SIZE + offset, false);
+}
+function u32be(sector, offset) {
+  return diskView.getUint32(sector * ADF.SECTOR_SIZE + offset, false);
+}
+function i32be(sector, offset) {
+  return diskView.getInt32(sector * ADF.SECTOR_SIZE + offset, false);
+}
+function readStr(sector, offset, len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    const c = u8(sector, offset + i);
+    if (!c) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+function bcplStr(sector, offset) {
+  // Bug fix: clamp length to prevent reading past sector boundary
+  const maxLen = Math.max(0, ADF.SECTOR_SIZE - offset - 1);
+  const len = Math.min(u8(sector, offset), maxLen, 108); // Amiga names ≤ 108 chars
+  return readStr(sector, offset + 1, len);
+}
+
+function calcBootChecksum(data) {
+  // B10 fix: use >>> 0 to keep each word unsigned before accumulating
+  let sum = 0;
+  const limit = Math.min(1024, data.length - 3);
+  for (let i = 0; i < limit; i += 4) {
+    if (i === 4) continue; // skip stored checksum field
+    const v = ((data[i] << 24) | (data[i+1] << 16) | (data[i+2] << 8) | data[i+3]) >>> 0;
+    sum = (sum + v) >>> 0;
+  }
+  return (~sum) >>> 0;
+}
+
+function blockChecksum(sector) {
+  let sum = 0;
+  const base = sector * ADF.SECTOR_SIZE;
+  for (let i = 0; i < ADF.SECTOR_SIZE; i += 4) {
+    const v = diskView.getUint32(base + i, false);
+    sum = (sum + v) >>> 0;
+  }
+  return sum === 0;
+}
+
+function computeAllChecksums() {
+  blockChecksumValid = {};
+  if (!ADF.IS_ADOS) return; // PFS/SFS use different checksum schemes
+  for (let s = 2; s < ADF.TOTAL_SECTORS; s++) {
+    const type = sectorTypes[s];
+    if (!type || type === 'free') continue;
+    if (type === 'data') {
+      const t = diskView.getInt32(s * ADF.SECTOR_SIZE, false);
+      if (t !== 2 && t !== 8 && t !== 16 && t !== 33) continue; // raw FFS data — skip
+    }
+    blockChecksumValid[s] = blockChecksum(s);
+  }
+}
+
+// ─── BLOCK STRUCTURE PARSER ───────────────────────────────────────────────────
+
+function parseBlockStructure(s) {
+  if (!diskData || s < 0 || s >= ADF.TOTAL_SECTORS) return null;
+  const type  = sectorTypes[s] || 'free';
+  const chkOk = blockChecksumValid[s];
+
+  if (type === 'free') return { kind: 'free', s };
+  if (type === 'boot') return parseBoot(s);
+  if (type === 'bitmap') return parseBitmapBlock(s);
+
+  const t    = i32be(s, 0);
+  const key  = u32be(s, 4);
+  const seq  = u32be(s, 8);
+  const fst  = u32be(s, 12);
+  const st   = i32be(s, ADF.SECTOR_SIZE - 4);
+
+  if (t === 2) { // T_HEADER
+    if (st === 1)  return parseRootBlockStructure(s, key, chkOk);
+    if (st === 2)  return parseDirBlockStructure(s, key, chkOk);
+    if (st === -3) return parseFileHeaderStructure(s, key, seq, fst, chkOk);
+    return { kind: 'header_unknown', s, t, st, key, chkOk };
+  }
+  if (t === 8)  return parseOFSDataBlock(s, key, seq, fst, chkOk);
+  if (t === 16) return parseExtensionBlock(s, key, seq, chkOk);
+  if (t === 33) return parseDirCacheBlock(s, key, chkOk);
+  return { kind: 'unknown', s, t, st, key, chkOk };
+}
+
+function parseBoot(s) {
+  const id = String.fromCharCode(u8(0,0), u8(0,1), u8(0,2));
+  const flags = u8(0, 3);
+  const chk = u32be(0, 4);
+  const root = u32be(0, 8);
+  return { kind: 'boot', s, id, flags, checksum: chk, rootPtr: root };
+}
+
+function parseBitmapBlock(s) {
+  const chkOk = blockChecksum(s);
+  const storedChk = u32be(s, 0);
+  let freeBits = 0, usedBits = 0;
+  for (let b = 4; b < ADF.SECTOR_SIZE; b++) {
+    const byte = u8(s, b);
+    freeBits  += (byte & 0xFF).toString(2).split('').filter(x => x === '1').length;
+    usedBits  += 8 - (byte & 0xFF).toString(2).split('').filter(x => x === '1').length;
+  }
+  return { kind: 'bitmap', s, chkOk, storedChk, freeBits, usedBits };
+}
+
+function parseRootBlockStructure(s, key, chkOk) {
+  const nameLen = u8(s, ADF.SECTOR_SIZE - 80);
+  const name    = readStr(s, ADF.SECTOR_SIZE - 79, nameLen);
+  const days    = u32be(s, ADF.SECTOR_SIZE - 92);
+  const mins    = u32be(s, ADF.SECTOR_SIZE - 88);
+  const ticks   = u32be(s, ADF.SECTOR_SIZE - 84);
+  const htSize  = u32be(s, 12);
+  const bitmapFlag = i32be(s, 316);
+  const bitmapBlocks = [];
+  for (let i = 0; i < 25; i++) {
+    const b = u32be(s, 320 + i * 4);
+    if (b) bitmapBlocks.push(b);
+  }
+  // Hash table
+  const hashTable = [];
+  for (let i = 0; i < 72; i++) {
+    const e = i32be(s, 24 + i * 4);
+    if (e > 0) hashTable.push(e);
+  }
+  return { kind: 'root', s, key, chkOk, name, date: amigaDateToStr(days, mins, ticks),
+    htSize, bitmapFlag, bitmapBlocks, hashTable };
+}
+
+function parseDirBlockStructure(s, key, chkOk) {
+  const nameLen = u8(s, ADF.SECTOR_SIZE - 80);
+  const name    = readStr(s, ADF.SECTOR_SIZE - 79, nameLen);
+  const parent  = u32be(s, ADF.SECTOR_SIZE - 12);
+  const next    = i32be(s, ADF.SECTOR_SIZE - 16);
+  const days    = u32be(s, ADF.SECTOR_SIZE - 92);
+  const mins    = u32be(s, ADF.SECTOR_SIZE - 88);
+  const ticks   = u32be(s, ADF.SECTOR_SIZE - 84);
+  const hashTable = [];
+  for (let i = 0; i < 72; i++) {
+    const e = i32be(s, 24 + i * 4);
+    if (e > 0) hashTable.push(e);
+  }
+  return { kind: 'dir', s, key, chkOk, name, parent, next, hashTable,
+    date: amigaDateToStr(days, mins, ticks) };
+}
+
+function parseFileHeaderStructure(s, key, highSeq, firstData, chkOk) {
+  const nameLen  = u8(s, ADF.SECTOR_SIZE - 80);
+  const name     = readStr(s, ADF.SECTOR_SIZE - 79, nameLen);
+  const fileSize = i32be(s, ADF.SECTOR_SIZE - 188);
+  const parent   = u32be(s, ADF.SECTOR_SIZE - 12);
+  const ext      = u32be(s, ADF.SECTOR_SIZE - 8);
+  const next     = i32be(s, ADF.SECTOR_SIZE - 16);
+  const prot     = u32be(s, ADF.SECTOR_SIZE - 192);
+  const days     = u32be(s, ADF.SECTOR_SIZE - 92);
+  const mins     = u32be(s, ADF.SECTOR_SIZE - 88);
+  const ticks    = u32be(s, ADF.SECTOR_SIZE - 84);
+  // Clamp highSeq — corrupt block can yield 0xFFFFFFFF causing a multi-billion iteration loop
+  const safeSeq = Math.min(highSeq >>> 0, 72);
+  const dataPtrs = [];
+  for (let i = safeSeq - 1; i >= 0; i--) {
+    dataPtrs.push(u32be(s, 24 + i * 4));
+  }
+  return { kind: 'file_header', s, key, chkOk, name, fileSize: Math.max(0, fileSize),
+    parent, ext, next, prot, dataPtrs, firstData, highSeq: safeSeq,
+    date: amigaDateToStr(days, mins, ticks) };
+}
+
+function parseOFSDataBlock(s, headerKey, seqNum, dataSize, chkOk) {
+  const nextData = u32be(s, 16);
+  const storedChk = u32be(s, 20);
+  return { kind: 'ofs_data', s, chkOk, headerKey, seqNum, dataSize, nextData, storedChk };
+}
+
+function parseDirCacheBlock(s, key, chkOk) {
+  // T_DIRDISK (33): directory-cache block. Parent at offset +508-12; next at +508-8.
+  const parent  = u32be(s, ADF.SECTOR_SIZE - 12);
+  const next    = u32be(s, ADF.SECTOR_SIZE - 8);
+  const records = u32be(s, 8);  // number of cached records
+  return { kind: 'dircache', s, key, chkOk, parent, next, records };
+}
+
+function parseExtensionBlock(s, key, highSeq, chkOk) {
+  const nextExt  = u32be(s, ADF.SECTOR_SIZE - 8);
+  const parent   = u32be(s, ADF.SECTOR_SIZE - 12);
+  // Clamp highSeq — corrupt block can yield 0xFFFFFFFF
+  const safeSeq  = Math.min(highSeq >>> 0, 72);
+  const dataPtrs = [];
+  for (let i = safeSeq - 1; i >= 0; i--) {
+    dataPtrs.push(u32be(s, 24 + i * 4));
+  }
+  return { kind: 'ext', s, key, chkOk, nextExt, parent, dataPtrs, highSeq: safeSeq };
+}
+
+// ─── CHAIN BUILDER ────────────────────────────────────────────────────────────
+
+function buildChainFromSector(s) {
+  const type = sectorTypes[s] || 'free';
+  if (type === 'free' || type === 'boot' || type === 'bitmap' || type === 'root') return [];
+
+  const t  = i32be(s, 0);
+  const st = i32be(s, ADF.SECTOR_SIZE - 4);
+
+  if (t === 8) {
+    const hdr = u32be(s, 4);
+    if (hdr > 0 && hdr < ADF.TOTAL_SECTORS) return buildChainFromFileHeader(hdr);
+    return [];
+  }
+  if (t === 16) {
+    const parent = u32be(s, ADF.SECTOR_SIZE - 12);
+    if (parent > 0 && parent < ADF.TOTAL_SECTORS) return buildChainFromFileHeader(parent);
+    return [];
+  }
+  if (t === 2 && st === -3) return buildChainFromFileHeader(s);
+  if (t === 2 && (st === 1 || st === 2)) return buildChainFromDir(s);
+
+  return [];
+}
+
+function buildChainFromFileHeader(hdrSector) {
+  const chain = [];
+  const visited = new Set();
+
+  // Helper: collect all data/ext pointers from one header/ext block
+  function collectBlock(sector) {
+    if (!sector || sector >= ADF.TOTAL_SECTORS || visited.has(sector)) return;
+    visited.add(sector);
+
+    const t   = i32be(sector, 0);
+    const st  = i32be(sector, ADF.SECTOR_SIZE - 4);
+    const seq = Math.min(u32be(sector, 8), 72); // B1 fix: clamp — corrupt block can give 0xFFFFFFFF
+    const chkOk = blockChecksumValid[sector];
+    const isHead = sector === hdrSector;
+    const kind = isHead ? 'head' : (t === 16 ? 'ext' : 'body');
+
+    // Collect this block's info
+    let label = isHead ? 'HDR' : (t === 16 ? 'EXT' : `#${u32be(sector, 8)}`);
+    chain.push({ sector, kind, label, chkOk });
+
+    // Collect data block pointers (stored in reverse order)
+    for (let i = seq - 1; i >= 0; i--) {
+      const dp = u32be(sector, 24 + i * 4);
+      if (dp > 0 && dp < ADF.TOTAL_SECTORS && !visited.has(dp)) {
+        visited.add(dp);
+        const dChk = blockChecksumValid[dp];
+        const dSeq = u32be(dp, 8);
+        chain.push({ sector: dp, kind: 'body', label: `#${dSeq || chain.length}`, chkOk: dChk });
+      }
+    }
+
+    // Follow extension block
+    const ext = u32be(sector, ADF.SECTOR_SIZE - 8);
+    if (ext > 0 && ext < ADF.TOTAL_SECTORS && !visited.has(ext)) {
+      collectBlock(ext);
+    }
+  }
+
+  collectBlock(hdrSector);
+
+  // Sort by sector number (roughly disk order)
+  chain.sort((a, b) => {
+    if (a.kind === 'head') return -1;
+    if (b.kind === 'head') return 1;
+    return a.sector - b.sector;
+  });
+
+  return chain;
+}
+
+function buildChainFromDir(dirSector) {
+  const chain = [{ sector: dirSector, kind: 'head', label: 'DIR',
+    chkOk: blockChecksumValid[dirSector] }];
+  const t  = i32be(dirSector, 0);
+  const st = i32be(dirSector, ADF.SECTOR_SIZE - 4);
+
+  for (let i = 0; i < 72; i++) {
+    const entry = i32be(dirSector, 24 + i * 4);
+    if (entry > 0 && entry < ADF.TOTAL_SECTORS) {
+      // Follow hash chain
+      let blk = entry;
+      const visitedLocal = new Set();
+      while (blk > 0 && blk < ADF.TOTAL_SECTORS && !visitedLocal.has(blk)) {
+        visitedLocal.add(blk);
+        const eName = safeBcplStr(blk);
+        const eSt   = i32be(blk, ADF.SECTOR_SIZE - 4);
+        const eChk  = blockChecksumValid[blk];
+        const icon  = eSt === 2 ? '📁' : '📄';
+        chain.push({ sector: blk, kind: 'body', label: icon + (eName || `S${blk}`), chkOk: eChk });
+        blk = i32be(blk, ADF.SECTOR_SIZE - 16); // hash chain next
+      }
+    }
+  }
+  return chain;
+}
+
+function safeBcplStr(sector) {
+  if (!sector || sector <= 0 || sector >= ADF.TOTAL_SECTORS) return '';
+  try { return bcplStr(sector, ADF.SECTOR_SIZE - 80); } catch(e) { return ''; }
+}
+
+function highlightChain(chain) {
+  // Clear previous
+  clearChain(false);
+  activeChain = chain;
+  for (const entry of chain) {
+    const el = document.getElementById(`cell-${entry.sector}`);
+    if (!el) continue;
+    el.classList.add('chain-member');
+    if (entry.kind === 'head') el.classList.add('chain-head');
+  }
+}
+
+function clearChain(resetState = true) {
+  document.querySelectorAll('.track-cell.chain-member').forEach(el => {
+    el.classList.remove('chain-member', 'chain-head');
+  });
+  if (resetState) activeChain = [];
+}
+
+function amigaDateToStr(days, mins, ticks) {
+  try {
+    // Validate inputs - corrupt blocks produce garbage values
+    if (days < 0 || days > 50000 || mins < 0 || mins > 1440 || ticks < 0) return '(invalid date)';
+    const epoch = new Date(1978, 0, 1);
+    epoch.setDate(epoch.getDate() + days);
+    epoch.setMinutes(epoch.getMinutes() + mins);
+    epoch.setMilliseconds(epoch.getMilliseconds() + ticks * 20);
+    const s = epoch.toISOString().replace('T', ' ').substring(0, 19);
+    return s.startsWith('NaN') ? '(invalid date)' : s;
+  } catch(e) { return '(invalid date)'; }
+}
+
+// HTML entity escaping - prevents injection from corrupt/adversarial filenames
+function safeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function parseBootBlock() {
+  const id    = String.fromCharCode(u8(0,0), u8(0,1), u8(0,2));
+  const flags = u8(0, 3);
+  const checksum    = u32be(0, 4);
+  const rootBlockNum = u32be(0, 8);
+
+  // Filesystem type string — covers all known formats
+  let fsType;
+  if (id === 'DOS') {
+    fsType = {
+      0: 'OFS (Original File System)',
+      1: 'FFS (Fast File System)',
+      2: 'OFS + International Mode',
+      3: 'FFS + International Mode',
+      4: 'OFS + International Mode + Directory Cache',
+      5: 'FFS + International Mode + Directory Cache',
+    }[flags & 0x07] || `AmigaDOS (Unknown variant 0x${(flags & 0x07).toString(16)})`;
+  } else if (id === 'PFS') {
+    fsType = flags === 2 ? 'PFS2 (Professional File System 2)'
+           : flags === 3 ? 'PFS3 (Professional File System 3)'
+           : 'PFS1 (Professional File System)';
+  } else if (id === 'PDS') {
+    fsType = 'PFS3 (Professional File System 3)';
+  } else if (id === 'SFS') {
+    fsType = flags === 0 ? 'SFS v1 (Smart File System)'
+           : flags === 1 ? 'SFS2 v2 (Smart File System 2)'
+           : `SFS v${flags} (Smart File System)`;
+  } else {
+    fsType = `Unknown (${id}\\x${flags.toString(16).padStart(2,'0')})`;
+  }
+
+  const stored = (diskView.getUint8(4) << 24) | (diskView.getUint8(5) << 16) |
+                 (diskView.getUint8(6) << 8) | diskView.getUint8(7);
+  const bootBytes = new Uint8Array(diskData);
+  const computed  = calcBootChecksum(bootBytes);
+  const checksumOk = (computed >>> 0) === (stored >>> 0);
+  const hasCode    = u32be(0, 12) !== 0;
+
+  return { id, flags, fsType, checksum: stored, checksumOk, rootBlockNum, hasCode };
+}
+
+function parseRootBlock() {
+  const s = ADF.ROOT_BLOCK;
+  const type = i32be(s, 0);
+  const nameLen = u8(s, ADF.SECTOR_SIZE - 80);
+  const name = readStr(s, ADF.SECTOR_SIZE - 79, nameLen);
+  const days = u32be(s, ADF.SECTOR_SIZE - 92);
+  const mins = u32be(s, ADF.SECTOR_SIZE - 88);
+  const ticks = u32be(s, ADF.SECTOR_SIZE - 84);
+  const bitmapFlag = i32be(s, 316);
+  const bitmapBlocks = [];
+  for (let i = 0; i < 25; i++) {
+    const b = u32be(s, 320 + i * 4);
+    if (b && b < ADF.TOTAL_SECTORS) bitmapBlocks.push(b);
+  }
+  const checksumOk = blockChecksum(s);
+  return { type, name, date: amigaDateToStr(days, mins, ticks), bitmapBlocks, bitmapFlag, checksumOk };
+}
+
+function parseBitmap(bitmapBlocks) {
+  const free = new Array(ADF.TOTAL_SECTORS).fill(false);
+  for (const blk of bitmapBlocks) {
+    if (blk <= 0 || blk >= ADF.TOTAL_SECTORS) continue;
+    const base = blk * ADF.SECTOR_SIZE + 4;
+    for (let i = 0; i < (ADF.SECTOR_SIZE - 4); i++) {
+      const byte = diskView.getUint8(base + i);
+      for (let b = 0; b < 8; b++) {
+        const sectorIdx = (i * 8 + b) + 2;
+        if (sectorIdx < ADF.TOTAL_SECTORS) free[sectorIdx] = !!(byte & (1 << b));
+      }
+    }
+  }
+  return free;
+}
+
+function readDirEntries(sector) {
+  const entries = [];
+  const visited = new Set();
+  for (let i = 0; i < 72; i++) {
+    let chain = i32be(sector, 24 + i * 4);
+    while (chain > 0 && chain < ADF.TOTAL_SECTORS && !visited.has(chain)) {
+      visited.add(chain);
+      const s = chain;
+      const stType = i32be(s, ADF.SECTOR_SIZE - 4);
+      const name = bcplStr(s, ADF.SECTOR_SIZE - 80);
+      const rawSize = i32be(s, ADF.SECTOR_SIZE - 188);
+      const size = stType === -3 ? Math.max(0, Math.min(rawSize, ADF.DISK_SIZE)) : 0;
+      const days = u32be(s, ADF.SECTOR_SIZE - 92);
+      const mins = u32be(s, ADF.SECTOR_SIZE - 88);
+      const ticks = u32be(s, ADF.SECTOR_SIZE - 84);
+      const next = i32be(s, ADF.SECTOR_SIZE - 16);
+      if (name) entries.push({ sector: s, name, stType, size, date: amigaDateToStr(days, mins, ticks) });
+      chain = next;
+    }
+  }
+  return entries;
+}
+
+function classifySectors(boot, root, bitmapFree, bitmapBlocks, allEntries) {
+  const types = new Array(ADF.TOTAL_SECTORS).fill('free');
+  types[0] = 'boot';
+  types[1] = 'boot';
+  types[ADF.ROOT_BLOCK] = 'root';
+  for (const b of bitmapBlocks) if (b > 0 && b < ADF.TOTAL_SECTORS) types[b] = 'bitmap';
+  for (let i = 0; i < ADF.TOTAL_SECTORS; i++)
+    if (!bitmapFree[i] && types[i] === 'free') types[i] = 'data';
+  for (const e of allEntries)
+    if ((e.stType === 2 || e.stType === 1) && e.sector > 0 && e.sector < ADF.TOTAL_SECTORS)
+      types[e.sector] = 'dir-block';
+  // Mark directory-cache blocks
+  if (ADF.HAS_DC) {
+    for (let i = 2; i < ADF.TOTAL_SECTORS; i++) {
+      if (types[i] === 'data') {
+        const t = diskView.getInt32(i * ADF.SECTOR_SIZE, false);
+        if (t === ADF.T_DIRDISK) types[i] = 'dircache';
+      }
+    }
+  }
+  return types;
+}
+
+/** For PFS/SFS: all non-boot sectors are marked as 'data' (we can't parse their bitmap). */
+function classifySectorsForeign() {
+  const types = new Array(ADF.TOTAL_SECTORS).fill('data');
+  types[0] = 'boot';
+  types[1] = 'boot';
+  return types;
+}
+
+function collectAllEntries(rootSector) {
+  const all = [];
+  const queue = [{sector: rootSector, path: ''}];
+  const visited = new Set();
+  const MAX_ENTRIES = 8000;
+  while (queue.length > 0 && all.length < MAX_ENTRIES) {
+    const {sector, path} = queue.shift();
+    if (visited.has(sector)) continue;
+    visited.add(sector);
+    let entries;
+    try { entries = readDirEntries(sector); }
+    catch(e) { console.warn(`readDirEntries error at sector ${sector}:`, e); continue; }
+    for (const e of entries) {
+      e.path = path + '/' + e.name;
+      all.push(e);
+      if (e.stType === ADF.ST_DIR && e.sector > 0 && e.sector < ADF.TOTAL_SECTORS)
+        queue.push({sector: e.sector, path: e.path});
+    }
+  }
+  return all;
+}
+
+// ────────────────────────────────────────────────────
+//  UI RENDERING
+// ────────────────────────────────────────────────────
+function renderTree(entries) {
+  // Build tree structure from flat entries
+  const root = { name: 'DISK', children: [], files: [], stType: 1 };
+  const byPath = { '': root };
+
+  // Sort: dirs first
+  entries.sort((a, b) => {
+    if (a.stType === b.stType) return a.name.localeCompare(b.name);
+    return (b.stType === 2 ? 1 : 0) - (a.stType === 2 ? 1 : 0);
+  });
+
+  for (const e of entries) {
+    const parentPath = e.path.substring(0, e.path.lastIndexOf('/'));
+    const parent = byPath[parentPath] || root;
+    if (e.stType === 2) {
+      const node = { name: e.name, children: [], files: [], stType: 2, size: 0, sector: e.sector };
+      byPath[e.path] = node;
+      parent.children.push(node);
+    } else {
+      parent.files = parent.files || [];
+      parent.files.push(e);
+    }
+  }
+
+  function renderNode(node, depth) {
+    let html = '';
+    if (depth > 0) {
+      html += `<div class="tree-item dir" onclick="selectSector(${node.sector})" style="padding-left:${depth*4}px">
+        <span class="tree-icon">📁</span>
+        <span>${safeHtml(node.name)}</span>
+        <span class="tree-size">DIR</span>
+      </div>`;
+    }
+    for (const child of (node.children || [])) {
+      html += renderNode(child, depth + 1);
+    }
+    for (const file of (node.files || [])) {
+      const ext = (file.name.includes('.') ? file.name.split('.').pop() : '').toLowerCase();
+      const icon = {
+        'exe': '⚙️', 'info': '🔷', 'lha': '📦', 'lzh': '📦',
+        'mod': '🎵', 'iff': '🎨', 'ilbm': '🖼️', 'anim': '🎞️',
+        '8svx': '🔊', 'smus': '🎼', 's': '📝',
+        'c': '📝', 'h': '📝', 'o': '🔩',
+      }[ext] || '📄';
+      // Use data attributes instead of inline onclick strings to safely pass filename
+      const safeN = safeHtml(file.name);
+      const openBtn = `<button class="iff-open-btn"
+        onclick="event.stopPropagation();openFileViewer(${file.sector},this.dataset.name,${file.size})"
+        data-name="${safeN}" title="Open in viewer">OPEN</button>`;
+      html += `<div class="tree-item file"
+        onclick="selectSector(${file.sector})"
+        ondblclick="openFileViewer(${file.sector},this.querySelector('[data-name]').dataset.name,${file.size})"
+        style="padding-left:${(depth+1)*4+8}px">
+        <span class="tree-icon">${icon}</span>
+        <span>${safeN}</span>
+        <span class="tree-size" style="margin-right:4px">${formatSize(file.size)}</span>
+        ${openBtn}
+      </div>`;
+    }
+    return html;
+  }
+
+  return renderNode(root, 0);
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'K';
+  return (bytes/1024/1024).toFixed(1) + 'M';
+}
+
+function renderDiskMap(freeMap) {
+  const totalSectors = ADF.TOTAL_SECTORS;
+  const mapTitle = `BLOCK ALLOCATION MAP — ${totalSectors.toLocaleString()} SECTORS × 512 BYTES`
+                 + `  [${ADF.DISK_TYPE} · ${ADF.FS_KIND}]`;
+  // Columns = sectors per track × sides → 22 for DD, 44 for HD → always 80 rows
+  const gridCols = ADF.SECTORS_PER_TRACK * ADF.SIDES;
+  let html = `
+    <div class="track-map-title">${mapTitle}</div>
+    <div class="track-grid" style="grid-template-columns:repeat(${gridCols},14px)">
+  `;
+  for (let i = 0; i < totalSectors; i++) {
+    const type = sectorTypes[i] || 'free';
+    const chkBad = (type !== 'free' && type !== 'boot') && blockChecksumValid[i] === false;
+    const tip = `Sector ${i} · T${Math.floor(i/ADF.SECTORS_PER_TRACK/2)} S${i%ADF.SECTORS_PER_TRACK} · ${type.toUpperCase()}${chkBad ? ' ⚠ BAD CHECKSUM' : ''}`;
+    html += `<div class="track-cell ${type}${chkBad?' chk-bad':''}${i===currentSector?' selected-cell':''}" onclick="selectSector(${i})" title="${tip}" id="cell-${i}"></div>`;
+  }
+  const corruptCount = Object.values(blockChecksumValid).filter(v => v === false).length;
+  html += `</div>
+    <div class="map-legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--wb-orange)"></span>Boot</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--wb-amber)"></span>Root</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#ff44ff"></span>Bitmap</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--wb-green)"></span>Directory</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--wb-blue)"></span>Data</div>
+      ${ADF.HAS_DC ? `<div class="legend-item"><span class="legend-dot" style="background:#00cccc"></span>DirCache</div>` : ''}
+      <div class="legend-item"><span class="legend-dot" style="background:var(--wb-border)"></span>Free</div>
+      <div class="legend-item" style="margin-left:auto">
+        <span style="position:relative;width:10px;height:10px;display:inline-block;border-radius:2px;background:rgba(0,85,170,0.4);">
+          <span style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 5px 5px 0;border-color:transparent var(--wb-red) transparent transparent"></span>
+        </span>
+        <span style="color:${corruptCount > 0 ? 'var(--wb-red)' : 'var(--wb-dim)'}">
+          ${corruptCount > 0 ? `${corruptCount} corrupt` : 'All checksums OK'}
+        </span>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:10px 0;border-top:1px solid var(--wb-border)">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        BLOCK INSPECTOR
+        <span id="map-chk-summary" style="font-size:9px;letter-spacing:1px;color:var(--wb-dim)"></span>
+      </div>
+      <div id="selected-block-info">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);padding:8px;text-align:center;opacity:0.5">Click any block to inspect</div>
+      </div>
+    </div>
+  `;
+  return html;
+}
+
+function renderBootAnalysis(boot, root) {
+  const fsClass = (boot.id === 'DOS' || boot.id === 'PFS' || boot.id === 'PDS' || boot.id === 'SFS') ? 'highlight' : 'error';
+  const spt = ADF.SECTORS_PER_TRACK;
+  const mediaStr = ADF.DISK_TYPE === 'HD'
+    ? `HD 3.5" — 1.76 MB  (${ADF.TRACKS} tracks × ${ADF.SIDES} sides × ${spt} sec/track)`
+    : `DD 3.5" — 880 KB  (${ADF.TRACKS} tracks × ${ADF.SIDES} sides × ${spt} sec/track)`;
+
+  const fsFeatures = ADF.IS_ADOS ? `
+    <div class="kv-key">Int'l Mode</div>
+    <div class="kv-val ${ADF.HAS_INTL ? 'highlight' : ''}">${ADF.HAS_INTL ? 'ENABLED — Case-insensitive sort' : 'Disabled'}</div>
+    <div class="kv-key">Dir Cache</div>
+    <div class="kv-val ${ADF.HAS_DC ? 'highlight' : ''}">${ADF.HAS_DC ? 'ENABLED — Fast directory scan' : 'Disabled'}</div>
+    <div class="kv-key">Data blocks</div>
+    <div class="kv-val">${ADF.IS_FFS ? 'FFS — raw 512-byte blocks (no OFS header)' : 'OFS — 24-byte header + 488-byte data'}</div>
+  ` : `
+    <div class="kv-key">Note</div>
+    <div class="kv-val warn">${ADF.FS_KIND} internal structures are not decoded by AmigaDOS parsers.
+      Use the Hex Viewer to inspect raw block data.</div>
+  `;
+
+  const rootSection = ADF.IS_ADOS ? `
+    <div class="analysis-section fade-in">
+      <div class="analysis-title">Root Block (Sector ${ADF.ROOT_BLOCK})</div>
+      <div class="kv-grid">
+        <div class="kv-key">Volume Name</div>
+        <div class="kv-val highlight">${root.name || '(unnamed)'}</div>
+        <div class="kv-key">Last Modified</div>
+        <div class="kv-val info">${root.date}</div>
+        <div class="kv-key">Bitmap Valid</div>
+        <div class="kv-val ${root.bitmapFlag === -1 ? 'highlight' : 'warn'}">
+          ${root.bitmapFlag === -1 ? '0xFFFFFFFF — VALID' : `0x${(root.bitmapFlag>>>0).toString(16).toUpperCase()} — DIRTY`}
+        </div>
+        <div class="kv-key">Block Checksum</div>
+        <div class="kv-val">
+          <span class="checksum-badge ${root.checksumOk ? 'ok' : 'fail'}">
+            ${root.checksumOk ? '✓ VALID' : '✗ CORRUPT'}
+          </span>
+        </div>
+        <div class="kv-key">Bitmap Blocks</div>
+        <div class="kv-val info">${root.bitmapBlocks.join(', ') || '—'}</div>
+      </div>
+    </div>
+  ` : `
+    <div class="analysis-section fade-in">
+      <div class="analysis-title">Volume</div>
+      <div class="kv-grid">
+        <div class="kv-key">Volume Name</div>
+        <div class="kv-val highlight">${root.name || '(unnamed)'}</div>
+        <div class="kv-key">Root Block</div>
+        <div class="kv-val info">Sector 2 (${ADF.FS_KIND} root object)</div>
+      </div>
+    </div>
+  `;
+
+  return `
+    <div class="analysis-section fade-in">
+      <div class="analysis-title">Boot Block (Sectors 0–1)</div>
+      <div class="kv-grid">
+        <div class="kv-key">Disk Identifier</div>
+        <div class="kv-val ${fsClass}">${boot.id}\\x${boot.flags.toString(16).padStart(2,'0')} — ${boot.fsType}</div>
+        <div class="kv-key">Checksum</div>
+        <div class="kv-val">
+          0x${boot.checksum.toString(16).toUpperCase().padStart(8,'0')} &nbsp;
+          <span class="checksum-badge ${boot.checksumOk ? 'ok' : 'fail'}">
+            ${boot.checksumOk ? '✓ VALID' : '✗ CORRUPT'}
+          </span>
+        </div>
+        <div class="kv-key">Root Block Ptr</div>
+        <div class="kv-val info">Sector ${boot.rootBlockNum} (expected ${ADF.ROOT_BLOCK})</div>
+        <div class="kv-key">Executable Code</div>
+        <div class="kv-val ${boot.hasCode ? 'highlight' : 'warn'}">${boot.hasCode ? 'YES — Bootable disk' : 'NO — Non-bootable'}</div>
+        <div class="kv-key">Filesystem</div>
+        <div class="kv-val highlight">${boot.fsType}</div>
+        ${fsFeatures}
+      </div>
+    </div>
+
+    ${rootSection}
+
+    <div class="analysis-section fade-in">
+      <div class="analysis-title">Disk Format Summary</div>
+      <div class="kv-grid">
+        <div class="kv-key">Media Type</div>
+        <div class="kv-val">${mediaStr}</div>
+        <div class="kv-key">Sector Size</div>
+        <div class="kv-val">512 bytes</div>
+        <div class="kv-key">Total Sectors</div>
+        <div class="kv-val">${ADF.TOTAL_SECTORS.toLocaleString()}</div>
+        <div class="kv-key">Total Capacity</div>
+        <div class="kv-val">${(ADF.DISK_SIZE / 1024).toFixed(0)} KB (${ADF.DISK_SIZE.toLocaleString()} bytes)</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInfoPanel(boot, root, freeMap, allEntries) {
+  const usedSectors = ADF.IS_ADOS ? freeMap.filter(f => !f).length : ADF.TOTAL_SECTORS - 2;
+  const freeSectors = ADF.IS_ADOS ? freeMap.filter(f => f).length : 0;
+  const usedBytes = usedSectors * ADF.SECTOR_SIZE;
+  const freeBytes = freeSectors * ADF.SECTOR_SIZE;
+  const usedPct = Math.round(usedSectors / ADF.TOTAL_SECTORS * 100);
+  const dirs  = allEntries.filter(e => e.stType === 2).length;
+  const files = allEntries.filter(e => e.stType === -3).length;
+
+  return `
+    <div class="info-block fade-in">
+      <div class="info-block-header">Volume</div>
+      <div class="info-block-body">
+        <div class="stat-row">
+          <span class="stat-label">Name</span>
+          <span class="stat-value amber">${root.name || '(unnamed)'}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Filesystem</span>
+          <span class="stat-value orange">${ADF.FS_KIND}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Disk type</span>
+          <span class="stat-value">${ADF.DISK_TYPE}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Modified</span>
+          <span class="stat-value" style="font-size:10px">${root.date ? root.date.split(' ')[0] : '—'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-block fade-in">
+      <div class="info-block-header">Storage Usage</div>
+      <div class="info-block-body">
+        <div class="stat-row">
+          <span class="stat-label">Used</span>
+          <span class="stat-value green">${formatSize(usedBytes)}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Free</span>
+          <span class="stat-value">${ADF.IS_ADOS ? formatSize(freeBytes) : 'N/A'}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total</span>
+          <span class="stat-value">${formatSize(ADF.DISK_SIZE)}</span>
+        </div>
+        <div class="usage-bar">
+          <div class="usage-fill" style="width:${usedPct}%"></div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--wb-dim);text-align:right;margin-top:4px">${usedPct}% USED</div>
+      </div>
+    </div>
+
+    <div class="info-block fade-in">
+      <div class="info-block-header">Contents</div>
+      <div class="info-block-body">
+        <div class="stat-row">
+          <span class="stat-label">Directories</span>
+          <span class="stat-value amber">📁 ${dirs}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Files</span>
+          <span class="stat-value">📄 ${files}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Entries</span>
+          <span class="stat-value">${allEntries.length}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-block fade-in">
+      <div class="info-block-header">Integrity</div>
+      <div class="info-block-body">
+        <div class="stat-row">
+          <span class="stat-label">Boot Checksum</span>
+          <span class="stat-value ${boot.checksumOk ? 'green' : ''}" style="${!boot.checksumOk?'color:var(--wb-red)':''}">
+            ${boot.checksumOk ? '✓ OK' : '✗ FAIL'}
+          </span>
+        </div>
+        ${ADF.IS_ADOS ? `
+        <div class="stat-row">
+          <span class="stat-label">Root Checksum</span>
+          <span class="stat-value ${root.checksumOk ? 'green' : ''}" style="${!root.checksumOk?'color:var(--wb-red)':''}">
+            ${root.checksumOk ? '✓ OK' : '✗ FAIL'}
+          </span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Bitmap</span>
+          <span class="stat-value ${root.bitmapFlag === -1 ? 'green' : 'amber'}">
+            ${root.bitmapFlag === -1 ? '✓ VALID' : '⚠ DIRTY'}
+          </span>
+        </div>` : `
+        <div class="stat-row">
+          <span class="stat-label">Internals</span>
+          <span class="stat-value" style="color:var(--wb-dim)">Not checked (${ADF.FS_KIND})</span>
+        </div>`}
+      </div>
+    </div>
+
+    <div class="info-block fade-in">
+      <div class="info-block-header">Geometry</div>
+      <div class="info-block-body">
+        <div class="stat-row"><span class="stat-label">Tracks</span><span class="stat-value">${ADF.TRACKS} (per side)</span></div>
+        <div class="stat-row"><span class="stat-label">Sides</span><span class="stat-value">${ADF.SIDES}</span></div>
+        <div class="stat-row"><span class="stat-label">Sectors/Track</span><span class="stat-value">${ADF.SECTORS_PER_TRACK}</span></div>
+        <div class="stat-row"><span class="stat-label">Sector Size</span><span class="stat-value">512 B</span></div>
+        <div class="stat-row"><span class="stat-label">Total Sectors</span><span class="stat-value">${ADF.TOTAL_SECTORS.toLocaleString()}</span></div>
+        <div class="stat-row"><span class="stat-label">Root Block</span><span class="stat-value">${ADF.IS_ADOS ? ADF.ROOT_BLOCK : 2}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderHexView(sector) {
+  const base = sector * ADF.SECTOR_SIZE;
+  let html = '';
+  for (let row = 0; row < 32; row++) {
+    const offset = row * 16;
+    const addr = base + offset;
+    let bytes = '';
+    let ascii = '';
+    for (let col = 0; col < 16; col++) {
+      const b = diskView.getUint8(base + offset + col);
+      const isPrint = b >= 0x20 && b < 0x7f;
+      const cls = b === 0 ? 'zero' : isPrint ? 'ascii-print' : '';
+      bytes += `<span class="hex-b ${cls}">${b.toString(16).padStart(2,'0').toUpperCase()}</span>`;
+      if (col === 7) bytes += `<span class="hex-sep">·</span>`;
+      ascii += isPrint ? String.fromCharCode(b) : '·';
+    }
+    html += `<div class="hex-row">
+      <span class="hex-addr">+${offset.toString(16).padStart(4,'0').toUpperCase()}</span>
+      <div class="hex-bytes">${bytes}</div>
+      <span class="hex-ascii">${ascii.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }
+  return html;
+}
+
+function selectSector(s) {
+  currentSector = s;
+
+  // Update selected cell highlight
+  document.querySelectorAll('.track-cell.selected-cell').forEach(el => el.classList.remove('selected-cell'));
+  const cell = document.getElementById(`cell-${s}`);
+  if (cell) cell.classList.add('selected-cell');
+
+  // Render block inspector in disk map panel
+  const infoEl = document.getElementById('selected-block-info');
+  if (infoEl) {
+    try {
+      const info = parseBlockStructure(s);
+      infoEl.innerHTML = renderBlockInspector(info);
+    } catch(err) {
+      console.error(`Block inspector error at sector ${s}:`, err);
+      infoEl.innerHTML = `<div class="block-inspector"><div class="bi-header">
+        <span class="bi-sector-num">S:${s}</span>
+        <span class="bi-type-tag data">Error</span>
+        <span class="bi-chk-badge bad">✗ PARSE ERROR</span>
+      </div><div class="bi-fields">
+        <div class="bi-field"><span class="bi-field-offset">—</span>
+        <span class="bi-field-name">Error</span>
+        <span class="bi-field-value err">${safeHtml(String(err.message || err))}</span></div>
+        <div class="bi-field"><span class="bi-field-offset">—</span>
+        <span class="bi-field-name">Tip</span>
+        <span class="bi-field-value dim">Block may be corrupt. Check hex viewer for raw data.</span></div>
+      </div></div>`;
+    }
+  }
+
+  // Update hex view
+  if (diskData) {
+    document.getElementById('hex-view').innerHTML = renderHexView(s);
+    document.getElementById('hex-page-info').textContent = `Sector ${s} / ${ADF.TOTAL_SECTORS}`;
+    document.getElementById('hex-controls').style.display = 'flex';
+    document.getElementById('hex-prev').disabled = s <= 0;
+    document.getElementById('hex-next').disabled = s >= ADF.TOTAL_SECTORS - 1;
+    const typeLabel = document.getElementById('hex-sector-type');
+    const type = sectorTypes[s] || 'free';
+    typeLabel.className = `status-pill ${type !== 'free' ? 'loaded' : 'idle'}`;
+    typeLabel.textContent = type.toUpperCase();
+  }
+}
+
+// ─── BLOCK INSPECTOR RENDERER ─────────────────────────────────────────────────
+
+function field(offset, name, value, cls = '', isLink = false) {
+  const linkCls = isLink ? ' link' : '';
+  return `<div class="bi-field">
+    <span class="bi-field-offset">+${offset < 0 ? (512+offset) : offset}</span>
+    <span class="bi-field-name">${name}</span>
+    <span class="bi-field-value${cls?(' '+cls):''}${linkCls}">${value}</span>
+  </div>`;
+}
+
+function sectorLink(s, label) {
+  if (!s || s <= 0 || s >= ADF.TOTAL_SECTORS) return `<span style="color:var(--wb-dim)">${label || 0}</span>`;
+  const type = sectorTypes[s] || 'free';
+  const chk  = blockChecksumValid[s];
+  const warn = chk === false ? ' ⚠' : '';
+  return `<span class="link" onclick="selectSector(${s})" title="Go to sector ${s}">${label || s}${warn}</span>`;
+}
+
+function ptrTable(ptrs, caption = '') {
+  if (!ptrs || ptrs.length === 0) return '';
+  let html = `<div class="bi-section-label">${caption}</div><div class="bi-field"><div class="bi-ptr-grid">`;
+  for (const p of ptrs) {
+    const z = !p || p === 0;
+    const chkBad = !z && blockChecksumValid[p] === false;
+    html += `<span class="bi-ptr-chip${z?' zero':''}" ${z?'':'onclick="selectSector('+p+')"'}>
+      ${p}${chkBad ? ' ⚠' : ''}
+    </span>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+function protToStr(prot) {
+  const bits = ['D','E','W','R','A','P','S','H'];
+  return bits.map((b, i) => (prot & (1 << (7-i))) ? `<span style="color:var(--wb-amber)">${b}</span>` : `<span style="color:var(--wb-dim)">${b}</span>`).join(' ');
+}
+
+function renderBlockInspector(info) {
+  if (!info) return `<div style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);text-align:center;opacity:0.5">No data</div>`;
+
+  const s = info.s;
+  const track = Math.floor(s / ADF.SECTORS_PER_TRACK / 2);
+  const side  = Math.floor(s / ADF.SECTORS_PER_TRACK) % 2;
+  const byteOff = s * ADF.SECTOR_SIZE;
+
+  // Determine type tag and checksum badge
+  const tagMap = {
+    free: 'free', boot: 'boot', root: 'root',
+    file_header: 'file', dir: 'dir', ofs_data: 'data',
+    ext: 'ext', bitmap: 'bitmap', dircache: 'dc',
+    header_unknown: 'data', unknown: 'data'
+  };
+  const tagLabel = {
+    free: 'Free', boot: 'Boot', root: 'Root',
+    file_header: 'File Header', dir: 'Directory', ofs_data: 'OFS Data',
+    ext: 'Extension', bitmap: 'Bitmap', dircache: 'DirCache',
+    header_unknown: 'T_HEADER', unknown: 'Unknown'
+  };
+  const tagCls   = tagMap[info.kind] || 'data';
+  const typeDisp = tagLabel[info.kind] || info.kind;
+  const chkOk    = info.chkOk;
+  const chkBadge = chkOk === undefined
+    ? `<span class="bi-chk-badge na">N/A</span>`
+    : chkOk
+      ? `<span class="bi-chk-badge ok">✓ CHK OK</span>`
+      : `<span class="bi-chk-badge bad">✗ CORRUPT</span>`;
+
+  let html = `<div class="block-inspector fade-in">
+    <div class="bi-header">
+      <span class="bi-sector-num">S:${s}</span>
+      <span class="bi-type-tag ${tagCls}">${typeDisp}</span>
+      <span style="font-family:var(--font-mono);font-size:9px;color:var(--wb-dim)">T${track}·SD${side}</span>
+      ${chkBadge}
+    </div>
+    <div class="bi-fields">`;
+
+  // ── Common location fields
+  html += field(0, 'Byte offset', `0x${byteOff.toString(16).toUpperCase()} (${byteOff.toLocaleString()})`, 'dim');
+
+  if (info.kind === 'free') {
+    html += field(0, 'Status', 'Unallocated — no data', 'dim');
+
+  } else if (info.kind === 'boot') {
+    html += field(0, 'Disk ID', `"${info.id}" + 0x${info.flags.toString(16).padStart(2,'0')}`, 'name');
+    html += field(4, 'Checksum', `0x${info.checksum.toString(16).toUpperCase().padStart(8,'0')}`);
+    html += field(8, 'Root block ptr', info.rootPtr, info.rootPtr === ADF.ROOT_BLOCK ? 'ok' : 'warn');
+
+  } else if (info.kind === 'bitmap') {
+    html += field(0, 'Block checksum', `0x${u32be(s,0).toString(16).toUpperCase().padStart(8,'0')}`, chkOk ? 'ok' : 'err');
+    html += field(4, 'Free sectors', info.freeBits, 'ok');
+    html += field(4, 'Used sectors', info.usedBits);
+
+  } else if (info.kind === 'root') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_HEADER)`);
+    html += field(4,  'Own key', `${info.key} ${info.key === s ? '' : '<span style="color:var(--wb-red)">≠ sector!</span>'}`);
+    html += field(-4, 'T_SECONDARY', `${i32be(s, ADF.SECTOR_SIZE-4)} (ST_ROOT)`);
+    html += `</div>`;
+    html += `<div class="bi-section-label">Volume</div><div class="bi-fields">`;
+    html += field(-80, 'Volume name', `"${safeHtml(info.name)}"`, 'name');
+    html += field(-92, 'Last modified', info.date);
+    html += field(316, 'Bitmap valid', info.bitmapFlag === -1 ? '0xFFFFFFFF ✓' : `0x${(info.bitmapFlag>>>0).toString(16).toUpperCase()} DIRTY`, info.bitmapFlag === -1 ? 'ok' : 'warn');
+    html += `</div>`;
+    html += `<div class="bi-section-label">Bitmap Blocks</div><div class="bi-fields"><div class="bi-field"><div class="bi-ptr-grid">`;
+    for (const b of info.bitmapBlocks) {
+      html += `<span class="bi-ptr-chip" onclick="selectSector(${b})">${b}</span>`;
+    }
+    html += `</div></div></div>`;
+    if (info.hashTable.length > 0) {
+      html += `<div class="bi-section-label">Hash Table Entries (${info.hashTable.length})</div><div class="bi-fields"><div class="bi-field"><div class="bi-ptr-grid">`;
+      for (const e of info.hashTable) {
+        const nm = safeHtml(safeBcplStr(e));
+        html += `<span class="bi-ptr-chip" onclick="selectSector(${e})" title="${nm || 'S'+e}">${e}${nm ? ' ' + nm : ''}</span>`;
+      }
+      html += `</div></div></div>`;
+    }
+    // Build + show chain (dir members)
+    const chain = buildChainFromDir(s);
+    if (chain.length > 1) { highlightChain(chain); html += `</div>` + renderChainPanel(chain, 'Root Directory Contents'); }
+    else { html += `</div>`; } // close bi-fields
+    return html + `</div>`;  // close block-inspector
+
+  } else if (info.kind === 'dir') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_HEADER)`);
+    html += field(4,  'Own key', `${info.key}`);
+    html += field(-4, 'T_SECONDARY', `${i32be(s, ADF.SECTOR_SIZE-4)} (ST_DIR)`);
+    html += `</div>`;
+    html += `<div class="bi-section-label">Directory</div><div class="bi-fields">`;
+    html += field(-80, 'Name', `"${safeHtml(info.name)}"`, 'name');
+    html += field(-92, 'Last modified', info.date);
+    html += field(-12, 'Parent', sectorLink(info.parent, `S:${info.parent}`), '', false);
+    if (info.next > 0) html += field(-16, 'Hash chain next', sectorLink(info.next, `S:${info.next}`), '', false);
+    if (info.hashTable.length > 0) {
+      html += `</div><div class="bi-section-label">Entries (${info.hashTable.length})</div><div class="bi-fields"><div class="bi-field"><div class="bi-ptr-grid">`;
+      for (const e of info.hashTable) {
+        const nm = safeHtml(safeBcplStr(e));
+        html += `<span class="bi-ptr-chip" onclick="selectSector(${e})" title="${nm || 'S'+e}">${e}${nm ? ' '+nm : ''}</span>`;
+      }
+      html += `</div></div>`;
+    }
+    const chain = buildChainFromDir(s);
+    if (chain.length > 1) { highlightChain(chain); html += `</div>` + renderChainPanel(chain, 'Directory Contents'); }
+    else { html += `</div>`; } // close bi-fields
+    return html + `</div>`; // close block-inspector
+
+  } else if (info.kind === 'file_header') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_HEADER)`);
+    html += field(4,  'Own key', `${info.key}`);
+    html += field(8,  'Num data ptrs', `${info.highSeq}`);
+    html += field(-4, 'T_SECONDARY', `${i32be(s, ADF.SECTOR_SIZE-4)} (ST_FILE)`);
+    html += `</div>`;
+    html += `<div class="bi-section-label">File Info</div><div class="bi-fields">`;
+    html += field(-80, 'Filename', `"${safeHtml(info.name)}"`, 'name');
+    html += field(-188,'File size', `${info.fileSize.toLocaleString()} bytes (${formatSize(info.fileSize)})`);
+    html += field(-92, 'Last modified', info.date);
+    html += field(-192,'Protection', protToStr(info.prot));
+    html += field(-12, 'Parent dir', sectorLink(info.parent, `S:${info.parent}`));
+    if (info.ext > 0) html += field(-8, 'Extension block', sectorLink(info.ext, `S:${info.ext}`), info.ext ? '' : 'dim');
+    if (info.next > 0) html += field(-16, 'Hash chain next', sectorLink(info.next, `S:${info.next}`));
+    html += `</div>`;   // close bi-fields
+    // Data pointers
+    html += ptrTable(info.dataPtrs, `Data Block Pointers (${info.dataPtrs.length})`);
+    // Build full chain
+    const chain = buildChainFromFileHeader(s);
+    highlightChain(chain);
+    html += renderChainPanel(chain, 'File Data Chain');
+    return html + `</div>`;   // close block-inspector
+
+  } else if (info.kind === 'ofs_data') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_DATA)`);
+    html += field(4,  'Header key', sectorLink(info.headerKey, `S:${info.headerKey}`) + ` <span style="color:var(--wb-dim);font-size:9px">(file header)</span>`);
+    html += field(8,  'Sequence #', `${info.seqNum} <span style="color:var(--wb-dim)">(data block ${info.seqNum} of file)</span>`);
+    html += field(12, 'Data size', `${info.dataSize} bytes`);
+    html += field(16, 'Next data block', info.nextData > 0 ? sectorLink(info.nextData, `S:${info.nextData}`) : '<span style="color:var(--wb-dim)">— (last block)</span>');
+    html += field(20, 'Checksum', `0x${info.storedChk.toString(16).toUpperCase().padStart(8,'0')}`, chkOk ? 'ok' : 'err');
+    html += `</div>`;   // close bi-fields
+    // Navigate to parent file header
+    if (info.headerKey > 0 && info.headerKey < ADF.TOTAL_SECTORS) {
+      const chain = buildChainFromFileHeader(info.headerKey);
+      highlightChain(chain);
+      html += renderChainPanel(chain, 'File Data Chain (click header to inspect file)');
+    }
+    return html + `</div>`;   // close block-inspector
+
+  } else if (info.kind === 'ext') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_LIST)`);
+    html += field(4,  'Own key', `${info.key}`);
+    html += field(8,  'Num data ptrs', `${info.highSeq}`);
+    html += field(-12, 'Parent (file hdr)', sectorLink(info.parent, `S:${info.parent}`));
+    html += field(-8,  'Next extension', info.nextExt > 0 ? sectorLink(info.nextExt, `S:${info.nextExt}`) : '<span style="color:var(--wb-dim)">— (last)</span>');
+    html += `</div>`;   // close bi-fields
+    html += ptrTable(info.dataPtrs, `Data Block Pointers (${info.dataPtrs.length})`);
+    if (info.parent > 0 && info.parent < ADF.TOTAL_SECTORS) {
+      const chain = buildChainFromFileHeader(info.parent);
+      highlightChain(chain);
+      html += renderChainPanel(chain, 'Full File Chain');
+    }
+    return html + `</div>`;   // close block-inspector
+
+  } else if (info.kind === 'dircache') {
+    html += field(0,  'T_PRIMARY', `${u32be(s,0)} (T_DIRDISK)`);
+    html += field(4,  'Own key', `${info.key}`);
+    html += field(8,  'Record count', `${info.records}`);
+    html += field(-12,'Parent dir', sectorLink(info.parent, `S:${info.parent}`));
+    html += field(-8, 'Next cache blk', info.next > 0 ? sectorLink(info.next, `S:${info.next}`) : '<span style="color:var(--wb-dim)">— (last)</span>');
+    html += `<div class="bi-section-label" style="color:var(--wb-dim)">Directory cache blocks store pre-computed directory listings for fast access (OFS/FFS + DirCache disks).</div>`;
+
+  } else {
+    html += field(0,  'T_PRIMARY',   `0x${u32be(s,0).toString(16).toUpperCase()} (${u32be(s,0)})`);
+    html += field(4,  'Own key',     u32be(s,4));
+    html += field(8,  'High seq',    u32be(s,8));
+    html += field(12, 'First data',  u32be(s,12));
+    html += field(16, 'Checksum',    `0x${u32be(s,16).toString(16).toUpperCase().padStart(8,'0')}`);
+    html += field(-4, 'T_SECONDARY', `0x${(u32be(s, ADF.SECTOR_SIZE-4)).toString(16).toUpperCase()} (${i32be(s, ADF.SECTOR_SIZE-4)})`);
+  }
+
+  html += `</div></div>`;   // close bi-fields + block-inspector
+  return html;
+}
+
+function renderChainPanel(chain, title) {
+  if (!chain || chain.length === 0) return '';
+  const corruptInChain = chain.filter(e => e.chkOk === false).length;
+  let html = `<div class="bi-chain-panel">
+    <div class="bi-chain-title">
+      🔗 ${title}
+      <span style="color:var(--wb-dim);font-size:9px">${chain.length} block${chain.length>1?'s':''}</span>
+      ${corruptInChain > 0 ? `<span style="color:var(--wb-red);font-size:9px">⚠ ${corruptInChain} corrupt</span>` : ''}
+      <button class="bi-chain-clear-btn" onclick="clearChain()">Clear</button>
+    </div>
+    <div class="bi-chain-entries">`;
+  for (const entry of chain) {
+    const cls = entry.kind === 'head' ? 'head' : entry.kind === 'ext' ? 'ext' : 'body';
+    const badMark = entry.chkOk === false ? ' ⚠' : '';
+    html += `<span class="bi-chain-entry ${cls}${entry.chkOk===false?' bad':''}"
+      onclick="selectSector(${entry.sector})" title="Sector ${entry.sector}${badMark}">
+      ${entry.label}<span class="seq-num">:${entry.sector}</span>${badMark}
+    </span>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+
+function showLoadError(msg) {
+  // Display a non-blocking error banner in the status area
+  const pill = document.getElementById('status-pill');
+  pill.className = 'status-pill error';
+  pill.textContent = `⚠ ${msg}`;
+  // Also show in center panel
+  const tm = document.getElementById('track-map');
+  if (tm) tm.innerHTML = `<div style="padding:24px;font-family:var(--font-mono);font-size:12px;color:var(--wb-red);text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">⚠</div>
+    <div style="letter-spacing:2px;margin-bottom:8px">DISK READ ERROR</div>
+    <div style="color:var(--wb-dim);font-size:11px">${safeHtml(msg)}</div>
+  </div>`;
+}
+
+// ────────────────────────────────────────────────────
+//  MAIN LOAD HANDLER
+// ────────────────────────────────────────────────────
+async function loadADF(file) {
+  const progressEl = document.getElementById('load-progress');
+  const barEl = document.getElementById('progress-bar');
+  progressEl.style.display = 'block';
+  barEl.style.width = '20%';
+
+  const buf = await file.arrayBuffer();
+  diskData = buf;
+  diskView = new DataView(buf);
+  activeChain = [];
+  blockChecksumValid = {};
+
+  barEl.style.width = '40%';
+
+  // ── 1. Detect geometry + filesystem type ────────────────────────────────────
+  detectAndApplyFormat(buf);
+
+  // Minimum sanity check: need at least 2 sectors for the boot block
+  if (buf.byteLength < ADF.SECTOR_SIZE * 2) {
+    showLoadError(`File too small: ${buf.byteLength} bytes.`);
+    progressEl.style.display = 'none';
+    diskData = null; diskView = null;
+    return;
+  }
+
+  // Warn about non-standard sizes but continue
+  if (!KNOWN_SIZES[buf.byteLength]) {
+    console.warn(`Non-standard ADF size: ${buf.byteLength} bytes. Treating as ${ADF.DISK_TYPE}.`);
+  }
+
+  barEl.style.width = '60%';
+
+  // ── 2. Parse — branch on filesystem family ───────────────────────────────────
+  let boot, root, bitmapFree, allEntries;
+  try {
+    boot = parseBootBlock();
+
+    if (ADF.IS_ADOS) {
+      // ── AmigaDOS (OFS / FFS and all variants) ────────────────────────────────
+      root       = parseRootBlock();
+      bitmapFree = parseBitmap(root.bitmapBlocks);
+      allEntries = collectAllEntries(ADF.ROOT_BLOCK);
+      sectorTypes = classifySectors(boot, root, bitmapFree, root.bitmapBlocks, allEntries);
+    } else {
+      // ── PFS1/PFS2/PFS3 / SFS — graceful display ──────────────────────────────
+      const volName = ADF.FS_KIND.startsWith('SFS') ? readSfsVolumeName() : readPfsVolumeName();
+      root = {
+        name: volName,
+        date: '',
+        bitmapFlag: 0,
+        bitmapBlocks: [],
+        checksumOk: null  // not applicable
+      };
+      bitmapFree = new Array(ADF.TOTAL_SECTORS).fill(false);
+      allEntries = [];
+      sectorTypes = classifySectorsForeign();
+    }
+  } catch(err) {
+    console.error('ADF parse error:', err);
+    progressEl.style.display = 'none';
+    document.getElementById('dropzone').classList.remove('hidden');
+    diskData = null; diskView = null;
+    showLoadError(`Parse failed: ${err.message || err}`);
+    return;
+  }
+
+  barEl.style.width = '80%';
+
+  // ── 3. Checksums (AmigaDOS only) ─────────────────────────────────────────────
+  if (ADF.IS_ADOS) computeAllChecksums();
+
+  // ── 4. Update UI ─────────────────────────────────────────────────────────────
+  document.getElementById('dropzone').classList.add('hidden');
+  document.getElementById('status-pill').className = 'status-pill loaded';
+  document.getElementById('status-pill').textContent = `● ${root.name || 'DISK'}  [${ADF.DISK_TYPE}·${ADF.FS_KIND}]`;
+
+  document.getElementById('tree-container').innerHTML =
+    allEntries.length > 0 ? renderTree(allEntries)
+    : `<div style="padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);text-align:center">
+        ${ADF.FS_KIND} filesystem detected.<br>File tree not available.<br>
+        <span style="opacity:0.5;font-size:9px">Use Hex Viewer to inspect raw blocks.</span>
+       </div>`;
+
+  document.getElementById('track-map').innerHTML = renderDiskMap(bitmapFree);
+  document.getElementById('boot-analysis').innerHTML = renderBootAnalysis(boot, root);
+  document.getElementById('info-container').innerHTML = renderInfoPanel(boot, root, bitmapFree, allEntries);
+
+  barEl.style.width = '100%';
+  setTimeout(() => { progressEl.style.display = 'none'; }, 500);
+  selectSector(0);
+}
+
+// ────────────────────────────────────────────────────
+//  EVENT LISTENERS
+// ────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadADF(e.target.files[0]);
+});
+
+const dropzone = document.getElementById('dropzone');
+document.body.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+  dropzone.classList.remove('hidden');
+});
+document.body.addEventListener('dragleave', e => {
+  if (!e.relatedTarget || e.relatedTarget === document.body) {
+    dropzone.classList.remove('dragover');
+    if (diskData) dropzone.classList.add('hidden');
+  }
+});
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadADF(file);
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.dataset.tab;
+    ['diskmap','bootblock','hexview'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = t === name ? 'block' : 'none';
+    });
+    if (name === 'hexview') {
+      document.getElementById('hex-controls').style.display = diskData ? 'flex' : 'none';
+    } else {
+      document.getElementById('hex-controls').style.display = 'none';
+    }
+  });
+});
+
+// Hex nav
+document.getElementById('hex-prev').addEventListener('click', () => selectSector(currentSector - 1));
+document.getElementById('hex-next').addEventListener('click', () => selectSector(currentSector + 1));
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeIFF(); return; }
+  if (!diskData) return;
+  if (document.getElementById('iff-modal').classList.contains('open')) return;
+  if (e.key === 'ArrowLeft' && currentSector > 0) selectSector(currentSector - 1);
+  if (e.key === 'ArrowRight' && currentSector < ADF.TOTAL_SECTORS - 1) selectSector(currentSector + 1);
+  if (e.key === 'ArrowUp' && currentSector > 22) selectSector(currentSector - 22);
+  if (e.key === 'ArrowDown' && currentSector < ADF.TOTAL_SECTORS - 22) selectSector(currentSector + 22);
+});
+
+// ════════════════════════════════════════════════════
+//  FILE EXTRACTION FROM ADF
+// ════════════════════════════════════════════════════
+
+function isFFS() {
+  // Check filesystem flag from boot block
+  return (u8(0,3) & 1) === 1;
+}
+
+function readFileData(headerSector, fileSize) {
+  // Bug fix: validate fileSize before allocating
+  if (fileSize < 0 || fileSize > ADF.DISK_SIZE) {
+    console.warn(`readFileData: suspicious fileSize=${fileSize}, clamping`);
+    fileSize = Math.max(0, Math.min(fileSize, ADF.DISK_SIZE));
+  }
+  const ffs = isFFS();
+  const result = new Uint8Array(fileSize);
+  let written = 0;
+  const visitedBlocks = new Set(); // Bug fix: guard against circular extension chains
+
+  function processBlock(sector) {
+    if (!sector || sector <= 0 || sector >= ADF.TOTAL_SECTORS) return;
+    if (visitedBlocks.has(sector)) return; // Bug fix: break cycles
+    visitedBlocks.add(sector);
+
+    const highSeq = u32be(sector, 8);
+    const safeSeq = Math.min(highSeq, 72); // Bug fix: clamp to max slots per block
+    // Data block pointers stored in REVERSE order: index 0 = LAST block
+    for (let i = safeSeq - 1; i >= 0 && written < fileSize; i--) {
+      const blk = u32be(sector, 24 + i * 4);
+      if (!blk || blk >= ADF.TOTAL_SECTORS) continue;
+      const base = blk * ADF.SECTOR_SIZE;
+      if (ffs) {
+        const toCopy = Math.min(ADF.SECTOR_SIZE, fileSize - written);
+        for (let j = 0; j < toCopy; j++) result[written++] = diskView.getUint8(base + j);
+      } else {
+        // OFS: data at offset 24, size at offset 12
+        const dataSize = Math.min(u32be(blk, 12), ADF.SECTOR_SIZE - 24);
+        const toCopy = Math.min(dataSize, fileSize - written);
+        for (let j = 0; j < toCopy; j++) result[written++] = diskView.getUint8(base + 24 + j);
+      }
+    }
+    // Extension block?
+    const ext = u32be(sector, ADF.SECTOR_SIZE - 8);
+    if (ext && ext !== sector) processBlock(ext);
+  }
+
+  processBlock(headerSector);
+  return result;
+}
+
+// ════════════════════════════════════════════════════
+//  IFF PARSER
+// ════════════════════════════════════════════════════
+
+function parseIFF(data) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const chunks = [];
+
+  function readID(offset) {
+    return String.fromCharCode(data[offset], data[offset+1], data[offset+2], data[offset+3]);
+  }
+  function readU32(offset) {
+    return view.getUint32(offset, false);
+  }
+
+  function parseChunks(start, end, depth) {
+    // Bug fix: depth limit prevents stack overflow on malformed nested containers
+    if (depth > 16) return [];
+    // Bug fix: clamp end to actual buffer to prevent OOB on corrupt size fields
+    end = Math.min(end, data.byteLength);
+    let pos = start;
+    const result = [];
+    while (pos + 8 <= end) {
+      const id = readID(pos);
+      const size = readU32(pos + 4);
+      // Bug fix: clamp chunk size to remaining buffer
+      const safeSize = Math.min(size, end - pos - 8);
+      const dataStart = pos + 8;
+      const dataEnd = dataStart + safeSize;
+      const paddedEnd = Math.min(dataEnd + (safeSize & 1), end);
+
+      const chunk = { id, size: safeSize, dataStart, dataEnd, depth, children: null };
+
+      if ((id === 'FORM' || id === 'LIST' || id === 'CAT ' || id === 'PROP') && safeSize >= 4) {
+        const subType = dataStart + 4 <= data.byteLength ? readID(dataStart) : '????';
+        chunk.subType = subType;
+        chunk.children = parseChunks(dataStart + 4, dataEnd, depth + 1);
+      }
+
+      result.push(chunk);
+      if (paddedEnd <= pos) break; // Bug fix: prevent zero-advance infinite loop
+      pos = paddedEnd;
+    }
+    return result;
+  }
+
+  return parseChunks(0, data.byteLength, 0);
+}
+
+function findChunk(chunks, id, recursive = true) {
+  for (const c of chunks) {
+    if (c.id === id) return c;
+    if (recursive && c.children) {
+      const found = findChunk(c.children, id, true);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function allChunksOfId(chunks, id, result = []) {
+  for (const c of chunks) {
+    if (c.id === id) result.push(c);
+    if (c.children) allChunksOfId(c.children, id, result);
+  }
+  return result;
+}
+
+function chunkBytes(data, chunk) {
+  return data.slice(chunk.dataStart, chunk.dataEnd);
+}
+
+// ════════════════════════════════════════════════════
+//  BYTERUN1 DECOMPRESSOR
+// ════════════════════════════════════════════════════
+
+function decompressByteRun1(src, unpackedSize) {
+  const dst = new Uint8Array(unpackedSize);
+  let si = 0, di = 0;
+  while (si < src.length && di < unpackedSize) {
+    const n = src[si++];
+    if (n <= 127) {
+      // Copy next n+1 bytes literally
+      const count = n + 1;
+      // Bug fix: also guard si inside inner loop
+      for (let i = 0; i < count && di < unpackedSize && si < src.length; i++) {
+        dst[di++] = src[si++];
+      }
+    } else if (n !== 128) {
+      // Repeat next byte (257-n) times
+      const count = 257 - n;
+      if (si >= src.length) break; // Bug fix: guard before reading repeat byte
+      const byte = src[si++];
+      for (let i = 0; i < count && di < unpackedSize; i++) {
+        dst[di++] = byte;
+      }
+    }
+    // n == 128: NOP
+  }
+  return dst;
+}
+
+// ════════════════════════════════════════════════════
+//  ILBM DECODER
+// ════════════════════════════════════════════════════
+
+function decodeILBM(data, chunks) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  // BMHD
+  const bmhdChunk = findChunk(chunks, 'BMHD');
+  if (!bmhdChunk) return null;
+  const b = bmhdChunk.dataStart;
+  if (b + 16 > data.byteLength) return null; // B2: BMHD too short
+  const w        = view.getUint16(b + 0, false);
+  const h        = view.getUint16(b + 2, false);
+  const nPlanes  = data[b + 8];
+  const masking  = data[b + 9];
+  const compress = data[b + 10];
+  const transpColor = view.getUint16(b + 12, false);
+  const xAspect  = data[b + 14];
+  const yAspect  = data[b + 15];
+
+  // B2: Validate dimensions before any allocation
+  if (w === 0 || h === 0 || nPlanes === 0 || nPlanes > 24) {
+    console.warn(`decodeILBM: invalid dimensions w=${w} h=${h} nPlanes=${nPlanes}`);
+    return null;
+  }
+  const MAX_PIX = 4096 * 4096;
+  if (w * h > MAX_PIX) {
+    console.warn(`decodeILBM: image too large ${w}x${h}`);
+    return null;
+  }
+
+  // CMAP
+  const cmapChunk = findChunk(chunks, 'CMAP');
+  const palette = [];
+  if (cmapChunk) {
+    const numColors = Math.floor(cmapChunk.size / 3);
+    for (let i = 0; i < numColors; i++) {
+      const ci = cmapChunk.dataStart + i * 3;
+      palette.push([data[ci], data[ci+1], data[ci+2]]);
+    }
+  }
+  // Fill palette to 256 if needed
+  while (palette.length < 256) palette.push([0,0,0]);
+
+  // CAMG (viewport mode)
+  const camgChunk = findChunk(chunks, 'CAMG');
+  let camg = 0;
+  if (camgChunk) camg = view.getUint32(camgChunk.dataStart, false);
+  const isHAM  = !!(camg & 0x0800);
+  const isEHB  = !!(camg & 0x0080);
+  const isHires = !!(camg & 0x8000);
+  const isInterlace = !!(camg & 0x0004);
+  const isHAM8 = isHAM && nPlanes === 8;
+
+  // Extra Half-Brite: add 32 dim copies
+  if (isEHB && !isHAM) {
+    for (let i = 0; i < 32; i++) {
+      const c = palette[i] || [0,0,0];
+      palette[i + 32] = [c[0] >> 1, c[1] >> 1, c[2] >> 1];
+    }
+  }
+
+  // BODY
+  const bodyChunk = findChunk(chunks, 'BODY');
+  if (!bodyChunk) return null;
+
+  const bytesPerRow = Math.floor((w + 15) / 16) * 2;
+  const totalPlanes = nPlanes + (masking === 1 ? 1 : 0);
+  const unpackedSize = h * totalPlanes * bytesPerRow;
+
+  let bodyData = chunkBytes(data, bodyChunk);
+  if (compress === 1) {
+    bodyData = decompressByteRun1(bodyData, unpackedSize);
+  }
+
+  // Render to RGBA
+  const pixels = new Uint8ClampedArray(w * h * 4);
+  let srcPos = 0;
+
+  for (let y = 0; y < h; y++) {
+    // Read all plane rows for this scanline
+    const planeData = [];
+    for (let p = 0; p < totalPlanes; p++) {
+      planeData.push(bodyData.slice(srcPos, srcPos + bytesPerRow));
+      srcPos += bytesPerRow;
+    }
+
+    let holdR = 0, holdG = 0, holdB = 0; // HAM hold registers
+
+    for (let x = 0; x < w; x++) {
+      // Extract pixel index from bitplanes
+      let colorIdx = 0;
+      for (let p = 0; p < nPlanes; p++) {
+        const byteIdx = x >> 3;
+        const bitMask = 0x80 >> (x & 7);
+        if (planeData[p][byteIdx] & bitMask) {
+          colorIdx |= (1 << p);
+        }
+      }
+
+      let r, g, b;
+
+      if (isHAM8) {
+        const ctrl = (colorIdx >> 6) & 3;
+        const val  = (colorIdx & 63) << 2; // scale 6-bit to 8-bit approx
+        if (ctrl === 0) { [r,g,b] = palette[colorIdx & 63] || [0,0,0]; holdR=r; holdG=g; holdB=b; }
+        else if (ctrl === 1) { r=holdR; g=holdG; b=val; holdB=b; }
+        else if (ctrl === 2) { b=holdB; g=holdG; r=val; holdR=r; }
+        else                 { r=holdR; b=holdB; g=val; holdG=g; }
+      } else if (isHAM) {
+        // HAM6: 6 planes, upper 2 bits = control, lower 4 bits = value/index
+        const ctrl = (colorIdx >> 4) & 3;
+        const val  = (colorIdx & 0xF) * 17; // scale 4-bit to 8-bit
+        // B5 fix: for ctrl=0, palette index is only the lower 4 bits (16-color palette)
+        if (ctrl === 0) { [r,g,b] = palette[colorIdx & 0x0F] || [0,0,0]; holdR=r; holdG=g; holdB=b; }
+        else if (ctrl === 1) { r=holdR; g=holdG; b=val; holdB=b; }
+        else if (ctrl === 2) { b=holdB; g=holdG; r=val; holdR=r; }
+        else                 { r=holdR; b=holdB; g=val; holdG=g; }
+      } else {
+        [r,g,b] = palette[colorIdx] || [0,0,0];
+      }
+
+      // Masking transparency
+      let a = 255;
+      if (masking === 2 && colorIdx === transpColor) a = 0;
+      if (masking === 1 && planeData[nPlanes]) {
+        const byteIdx = x >> 3;
+        const bitMask = 0x80 >> (x & 7);
+        if (!(planeData[nPlanes][byteIdx] & bitMask)) a = 0;
+      }
+
+      const i = (y * w + x) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+  }
+
+  return {
+    width: w, height: h, pixels,
+    nPlanes, palette, masking, compress, transpColor,
+    xAspect, yAspect, isHAM, isEHB, isHires, isInterlace, isHAM8,
+    camg
+  };
+}
+
+// ════════════════════════════════════════════════════
+//  ANIM DECODER (ANIM-5 XOR delta)
+// ════════════════════════════════════════════════════
+
+function decodeANIM(data, topChunks) {
+  const animForm = topChunks.find(c => c.id === 'FORM' && c.subType === 'ANIM');
+  if (!animForm) return null;
+
+  const frames = [];
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  // Collect all FORM ILBM sub-chunks inside the ANIM
+  let pos = animForm.dataStart + 4; // skip 'ANIM' type tag
+  while (pos + 8 <= animForm.dataEnd) {
+    const id   = String.fromCharCode(data[pos], data[pos+1], data[pos+2], data[pos+3]);
+    const size = view.getUint32(pos + 4, false);
+    const safeSize = Math.min(size, animForm.dataEnd - pos - 8);
+    const chunkDataStart = pos + 8;
+    const chunkDataEnd   = chunkDataStart + safeSize;
+
+    if (id === 'FORM' && safeSize >= 4) {
+      const subType = String.fromCharCode(
+        data[chunkDataStart], data[chunkDataStart+1],
+        data[chunkDataStart+2], data[chunkDataStart+3]);
+      if (subType === 'ILBM') {
+        // Parse chunks relative to the slice we hand to parseIFF
+        const sliceStart = pos;
+        const sliceLen   = 8 + safeSize;
+        const frameSlice = data.slice(sliceStart, sliceStart + sliceLen);
+        const frameChunks = parseIFF(frameSlice);
+        // Inner ILBM chunks are children of the FORM
+        const innerChunks = frameChunks[0]?.children || frameChunks;
+        frames.push({
+          sliceStart,      // absolute offset of FORM header in data
+          innerData: data.slice(chunkDataStart + 4, chunkDataEnd), // ILBM body (after subType)
+          innerChunks,     // already relative to innerData (offset adjusted below)
+          rawChunks: frameChunks,
+        });
+      }
+    }
+    const advance = safeSize + (safeSize & 1) + 8;
+    if (advance <= 0) break;
+    pos += advance;
+  }
+
+  if (frames.length === 0) return null;
+
+  // ── Decode first frame as base ILBM to get palette/dimensions ──────────────
+  // The first frame's innerChunks have dataStart values relative to frameSlice,
+  // which starts at sliceStart. innerData starts at sliceStart+8+4 = chunkDataStart+4.
+  // We need chunks whose dataStart is relative to innerData.
+  // Easiest: re-parse just the ILBM body portion.
+  const frame0 = frames[0];
+  const base = frame0.innerData;
+  // Re-parse the base frame inner chunks so offsets are relative to `base`
+  const baseChunks = parseIFF(base);
+  const baseILBM = decodeILBM(base, baseChunks);
+  if (!baseILBM) return null;
+
+  const { width, height, nPlanes, palette, isHAM, isHAM8, isEHB } = baseILBM;
+  const bytesPerRow = Math.floor((width + 15) / 16) * 2;
+  const planeSize   = bytesPerRow * height;
+
+  // B6 fix: Keep state as bitplane arrays, never convert back from RGBA
+  // This avoids the O(W×H×256) nearest-neighbour reverse that froze the browser.
+  function extractBitplanes(ilbmResult) {
+    // Re-derive bitplanes from the decoded pixels would still be slow.
+    // Instead, decode the BODY chunk directly into bitplane arrays.
+    const bodyChunk = findChunk(baseChunks, 'BODY');
+    // Use the base ILBM's body — for frame 0 only
+    return null; // signal to use direct body parse
+  }
+
+  // Parse bitplanes directly for all frames
+  function parseBitplanesFromILBM(innerData) {
+    const chunks = parseIFF(innerData);
+    const bmhdC  = findChunk(chunks, 'BMHD');
+    const bodyC  = findChunk(chunks, 'BODY');
+    if (!bmhdC || !bodyC) return null;
+    const bv = new DataView(innerData.buffer, innerData.byteOffset, innerData.byteLength);
+    const fw = bv.getUint16(bmhdC.dataStart, false);
+    const fh = bv.getUint16(bmhdC.dataStart + 2, false);
+    if (fw !== width || fh !== height) return null;
+    const compress = innerData[bmhdC.dataStart + 10];
+    const mask     = innerData[bmhdC.dataStart + 9];
+    const totalP   = nPlanes + (mask === 1 ? 1 : 0);
+    const unpackedSize = height * totalP * bytesPerRow;
+    let bodyData = innerData.slice(bodyC.dataStart, bodyC.dataEnd);
+    if (compress === 1) bodyData = decompressByteRun1(bodyData, unpackedSize);
+    const planes = [];
+    let srcPos = 0;
+    for (let p = 0; p < totalP; p++) {
+      planes.push(bodyData.slice(srcPos, srcPos + height * bytesPerRow));
+      srcPos += height * bytesPerRow;
+      // Note: ILBM stores interleaved rows, not contiguous planes.
+      // Re-arrange: for each row, plane p's row is at srcPos (interleaved).
+    }
+    // Re-parse interleaved format correctly: rows are interleaved per scanline
+    const planes2 = Array.from({length: totalP}, () => new Uint8Array(planeSize));
+    srcPos = 0;
+    for (let y = 0; y < height; y++) {
+      for (let p = 0; p < totalP; p++) {
+        for (let bpr = 0; bpr < bytesPerRow; bpr++) {
+          planes2[p][y * bytesPerRow + bpr] = srcPos < bodyData.length ? bodyData[srcPos] : 0;
+          srcPos++;
+        }
+      }
+    }
+    return planes2;
+  }
+
+  // Render bitplanes to RGBA (HAM-aware)
+  function bitplanesToRGBA(planes) {
+    const pixels = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      let holdR = 0, holdG = 0, holdB = 0;
+      for (let x = 0; x < width; x++) {
+        let colorIdx = 0;
+        for (let p = 0; p < nPlanes; p++) {
+          if (planes[p][y * bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) {
+            colorIdx |= (1 << p);
+          }
+        }
+        let r, g, b;
+        if (isHAM8) {
+          const ctrl = (colorIdx >> 6) & 3;
+          const val  = (colorIdx & 63) << 2;
+          if (ctrl === 0) { [r,g,b] = palette[colorIdx & 63] || [0,0,0]; holdR=r; holdG=g; holdB=b; }
+          else if (ctrl === 1) { r=holdR; g=holdG; b=val; holdB=b; }
+          else if (ctrl === 2) { b=holdB; g=holdG; r=val; holdR=r; }
+          else                 { r=holdR; b=holdB; g=val; holdG=g; }
+        } else if (isHAM) {
+          const ctrl = (colorIdx >> 4) & 3;
+          const val  = (colorIdx & 0xF) * 17;
+          // B5 fix applied here too
+          if (ctrl === 0) { [r,g,b] = palette[colorIdx & 0x0F] || [0,0,0]; holdR=r; holdG=g; holdB=b; }
+          else if (ctrl === 1) { r=holdR; g=holdG; b=val; holdB=b; }
+          else if (ctrl === 2) { b=holdB; g=holdG; r=val; holdR=r; }
+          else                 { r=holdR; b=holdB; g=val; holdG=g; }
+        } else {
+          [r,g,b] = palette[colorIdx] || [0,0,0];
+        }
+        const i = (y * width + x) * 4;
+        pixels[i] = r; pixels[i+1] = g; pixels[i+2] = b; pixels[i+3] = 255;
+      }
+    }
+    return pixels;
+  }
+
+  // Build per-frame bitplane state
+  let curPlanes = parseBitplanesFromILBM(base);
+  if (!curPlanes) {
+    // Fallback: extract from already-decoded base ILBM pixels via base decode
+    curPlanes = parseBitplanesFromILBM(frames[0].innerData);
+    if (!curPlanes) return null;
+  }
+
+  const framePixels = [bitplanesToRGBA(curPlanes)];
+  const frameDelays = [0];
+
+  for (let fi = 1; fi < frames.length; fi++) {
+    const innerData = frames[fi].innerData;
+    // Re-parse chunks relative to innerData
+    const fChunks = parseIFF(innerData);
+
+    // B7 fix: ANHD dataStart is now relative to innerData (re-parsed correctly)
+    const anhdChunk = findChunk(fChunks, 'ANHD');
+    let relTime = 2;
+    if (anhdChunk && anhdChunk.dataStart + 10 <= innerData.byteLength) {
+      const anhdView = new DataView(innerData.buffer, innerData.byteOffset + anhdChunk.dataStart, anhdChunk.size);
+      relTime = anhdView.getUint16(8, false) || 2;
+    }
+    frameDelays.push(Math.max(1, relTime) * 20);
+
+    const dltaChunk = findChunk(fChunks, 'DLTA');
+    if (dltaChunk) {
+      // B6 fix: Apply ANIM-5 XOR delta directly to bitplanes (no RGB roundtrip)
+      const dltaData = innerData.slice(dltaChunk.dataStart, dltaChunk.dataEnd);
+      // Clone current planes then XOR-delta in-place
+      const newPlanes = curPlanes.map(p => new Uint8Array(p));
+      applyANIM5DeltaToBitplanes(dltaData, newPlanes, nPlanes, bytesPerRow, height);
+      curPlanes = newPlanes;
+    } else {
+      // Full fresh frame
+      const freshPlanes = parseBitplanesFromILBM(innerData);
+      if (freshPlanes) curPlanes = freshPlanes;
+    }
+    framePixels.push(bitplanesToRGBA(curPlanes));
+  }
+
+  return { frames: framePixels, frameDelays, ilbm: baseILBM, count: framePixels.length };
+}
+
+// B6 fix: Apply ANIM-5 XOR delta directly to bitplane arrays — O(delta_bytes) not O(W×H×colors)
+function applyANIM5DeltaToBitplanes(deltaData, planes, nPlanes, bytesPerRow, height) {
+  const view = new DataView(deltaData.buffer, deltaData.byteOffset, deltaData.byteLength);
+  for (let p = 0; p < nPlanes; p++) {
+    if (p * 4 + 4 > deltaData.byteLength) break;
+    const planeOffset = view.getUint32(p * 4, false);
+    if (!planeOffset || planeOffset >= deltaData.byteLength) continue;
+
+    let pos = planeOffset;
+    for (let col = 0; col < bytesPerRow && pos < deltaData.byteLength; col++) {
+      let row = 0;
+      while (row < height && pos < deltaData.byteLength) {
+        const count = deltaData[pos++];
+        if (count === 0) break; // end of column
+        if (count & 0x80) {
+          row += count & 0x7F; // skip rows
+        } else {
+          // XOR next `count` bytes into column
+          for (let i = 0; i < count && row < height && pos < deltaData.byteLength; i++, row++) {
+            planes[p][row * bytesPerRow + col] ^= deltaData[pos++];
+          }
+        }
+      }
+    }
+  }
+}
+
+// Keep old applyANIM5Delta name pointing to the new function for backwards compat
+function applyANIM5Delta(deltaData, pixels, ilbm) {
+  // This old signature (working on RGBA) is no longer called internally.
+  // Kept as stub to avoid reference errors from any external call.
+  console.warn('applyANIM5Delta: legacy stub called — use applyANIM5DeltaToBitplanes');
+}
+
+// ════════════════════════════════════════════════════
+//  8SVX AUDIO DECODER
+// ════════════════════════════════════════════════════
+
+function decode8SVX(data, chunks) {
+  const vhdrChunk = findChunk(chunks, 'VHDR');
+  if (!vhdrChunk) return null;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const b = vhdrChunk.dataStart;
+  const oneShotSamples = view.getUint32(b + 0, false);
+  const repeatSamples  = view.getUint32(b + 4, false);
+  const samplesPerCycle = view.getUint32(b + 8, false);
+  const samplesPerSec  = view.getUint16(b + 12, false);
+  const octaves        = data[b + 14];
+  const compression    = data[b + 15];
+  const volume         = view.getInt32(b + 16, false);
+
+  const bodyChunk = findChunk(chunks, 'BODY');
+  if (!bodyChunk) return null;
+  let bodyData = chunkBytes(data, bodyChunk);
+
+  // Decompress Fibonacci delta if needed
+  if (compression === 1) {
+    bodyData = decompressFibonacci(bodyData);
+  }
+
+  // Convert signed 8-bit to float32
+  const sampleRate = samplesPerSec || 8363;
+  const floatSamples = new Float32Array(bodyData.length);
+  for (let i = 0; i < bodyData.length; i++) {
+    // Uint8 to signed: values >= 128 are negative
+    const s = bodyData[i] >= 128 ? bodyData[i] - 256 : bodyData[i];
+    floatSamples[i] = s / 128.0;
+  }
+
+  const nameChunk = findChunk(chunks, 'NAME');
+  let name = '';
+  if (nameChunk) {
+    for (let i = nameChunk.dataStart; i < nameChunk.dataEnd && data[i]; i++) {
+      name += String.fromCharCode(data[i]);
+    }
+  }
+
+  return { floatSamples, sampleRate, oneShotSamples, repeatSamples,
+    samplesPerCycle, octaves, compression, volume, name };
+}
+
+function decompressFibonacci(src) {
+  const FIB = [-34,-21,-13,-8,-5,-3,-2,-1,0,1,2,3,5,8,13,21];
+  const dst = new Uint8Array(src.length * 2);
+  if (src.length === 0) return dst;
+  let prev = (src[0] >= 128) ? src[0] - 256 : src[0];
+  let di = 0;
+  dst[di++] = prev & 0xFF;
+  for (let i = 1; i < src.length; i++) {
+    const byte = src[i];
+    const hi = (byte >> 4) & 0xF;
+    const lo = byte & 0xF;
+    prev = Math.max(-128, Math.min(127, prev + FIB[hi]));
+    dst[di++] = prev & 0xFF;
+    prev = Math.max(-128, Math.min(127, prev + FIB[lo]));
+    dst[di++] = prev & 0xFF;
+  }
+  return dst.slice(0, di);
+}
+
+// ════════════════════════════════════════════════════
+//  IFF VIEWER STATE
+// ════════════════════════════════════════════════════
+
+let iffState = {
+  data: null, chunks: null, type: null,
+  ilbm: null, anim: null, audio: null,
+  currentFrame: 0, animTimer: null, animFps: 10, animPlaying: false,
+  zoom: 1, audioCtx: null, audioSource: null, audioStartTime: 0,
+  audioBuffer: null, isAudioPlaying: false, audioAnimFrame: null,
+  currentFilename: ''
+};
+
+function openFileViewer(sector, name, size) {
+  if (!diskData) return;
+  const data = readFileData(sector, size);
+
+  // Detect IFF
+  if (data.length < 12 || String.fromCharCode(data[0],data[1],data[2],data[3]) !== 'FORM') {
+    // Show hex fallback
+    selectSector(sector);
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('[data-tab="hexview"]').classList.add('active');
+    ['diskmap','bootblock','hexview'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = t === 'hexview' ? 'block' : 'none';
+    });
+    document.getElementById('hex-controls').style.display = 'flex';
+    return;
+  }
+
+  iffState.data = data;
+  iffState.currentFilename = name;
+  const topChunks = parseIFF(data);
+  iffState.chunks = topChunks;
+
+  const formType = topChunks[0]?.subType || '????';
+  iffState.type = formType;
+
+  // Stop any existing animation/audio
+  stopAnimation();
+  stopAudio();
+
+  document.getElementById('iff-filename').textContent = name;
+  document.getElementById('iff-type-badge').textContent = formType;
+
+  // Render chunk tree always
+  document.getElementById('iff-view-chunks').innerHTML = renderChunkTree(topChunks, data);
+
+  // Properties
+  document.getElementById('iff-props-content').innerHTML = renderIFFProps(topChunks, data, formType);
+
+  // Preview — wrap so any decode error shows a friendly message instead of crashing
+  try {
+    renderIFFPreview(topChunks, data, formType);
+  } catch(err) {
+    console.error('IFF render error:', err);
+    document.getElementById('iff-view-generic').style.display = 'flex';
+    document.getElementById('iff-generic-type').textContent = `${formType} — render error`;
+    document.getElementById('iff-canvas').style.display = 'none';
+  }
+
+  document.getElementById('iff-modal').classList.add('open');
+
+  // Reset to preview tab
+  document.querySelectorAll('.iff-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-iff-tab="preview"]').classList.add('active');
+  showIFFTab('preview');
+}
+
+function renderIFFPreview(chunks, data, formType) {
+  const canvasWrap = document.getElementById('iff-canvas-wrap');
+  // Hide everything first
+  document.getElementById('iff-canvas').style.display = 'none';
+  document.getElementById('iff-anim-overlay').style.display = 'none';
+  document.getElementById('iff-view-audio').style.display = 'none';
+  document.getElementById('iff-view-generic').style.display = 'none';
+  document.getElementById('iff-palette').style.display = 'none';
+  document.getElementById('iff-image-info').style.display = 'none';
+
+  if (formType === 'ILBM') {
+    const innerChunks = chunks[0]?.children || chunks;
+    const ilbm = decodeILBM(data, innerChunks);
+    if (!ilbm) {
+      document.getElementById('iff-view-generic').style.display = 'flex';
+      return;
+    }
+    iffState.ilbm = ilbm;
+    iffState.zoom = 1;
+    drawILBMToCanvas(ilbm.pixels, ilbm.width, ilbm.height);
+    document.getElementById('iff-canvas').style.display = 'block';
+    showImageInfo(ilbm);
+    showPalette(ilbm.palette, 1 << ilbm.nPlanes);
+
+  } else if (formType === 'ANIM') {
+    const anim = decodeANIM(data, chunks);
+    if (!anim) {
+      document.getElementById('iff-view-generic').style.display = 'flex';
+      document.getElementById('iff-generic-type').textContent = 'ANIM (no frames)';
+      return;
+    }
+    iffState.anim = anim;
+    iffState.ilbm = anim.ilbm;
+    iffState.currentFrame = 0;
+    iffState.zoom = 1;
+    drawFrameToCanvas(0);
+    document.getElementById('iff-canvas').style.display = 'block';
+    document.getElementById('iff-anim-overlay').style.display = 'flex';
+    document.getElementById('anim-frame-counter').textContent = `1 / ${anim.count}`;
+    document.getElementById('anim-fps-val').textContent = iffState.animFps;
+    showImageInfo(anim.ilbm);
+    showPalette(anim.ilbm.palette, 1 << anim.ilbm.nPlanes);
+    startAnimation();
+
+  } else if (formType === '8SVX') {
+    const innerChunks = chunks[0]?.children || chunks;
+    const audio = decode8SVX(data, innerChunks);
+    if (!audio) {
+      document.getElementById('iff-view-generic').style.display = 'flex';
+      document.getElementById('iff-generic-type').textContent = '8SVX (invalid)';
+      return;
+    }
+    iffState.audio = audio;
+    document.getElementById('iff-view-audio').style.display = 'flex';
+    drawWaveform(audio.floatSamples);
+    document.getElementById('audio-info-grid').innerHTML = `
+      <div class="kv-key">Sample Rate</div><div class="kv-val info">${audio.sampleRate} Hz</div>
+      <div class="kv-key">Duration</div><div class="kv-val">${(audio.floatSamples.length / audio.sampleRate).toFixed(3)}s</div>
+      <div class="kv-key">Samples</div><div class="kv-val">${audio.floatSamples.length.toLocaleString()}</div>
+      <div class="kv-key">Compression</div><div class="kv-val ${audio.compression ? 'warn' : 'highlight'}">${audio.compression === 1 ? 'Fibonacci Delta' : 'None (PCM)'}</div>
+      <div class="kv-key">One-shot</div><div class="kv-val">${audio.oneShotSamples}</div>
+      <div class="kv-key">Repeat</div><div class="kv-val">${audio.repeatSamples}</div>
+      <div class="kv-key">Volume</div><div class="kv-val">${((audio.volume / 65536) * 100).toFixed(1)}%</div>
+      ${audio.name ? `<div class="kv-key">Name</div><div class="kv-val">${audio.name}</div>` : ''}
+    `;
+    buildVUMeter();
+
+  } else {
+    document.getElementById('iff-view-generic').style.display = 'flex';
+    document.getElementById('iff-generic-type').textContent = formType;
+  }
+}
+
+function drawILBMToCanvas(pixels, width, height) {
+  const canvas = document.getElementById('iff-canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const imgData = new ImageData(pixels, width, height);
+  ctx.putImageData(imgData, 0, 0);
+  applyCanvasZoom();
+}
+
+function drawFrameToCanvas(frameIdx) {
+  const { anim } = iffState;
+  if (!anim || frameIdx >= anim.count) return;
+  const { ilbm } = anim;
+  drawILBMToCanvas(anim.frames[frameIdx], ilbm.width, ilbm.height);
+  document.getElementById('anim-frame-counter').textContent = `${frameIdx + 1} / ${anim.count}`;
+}
+
+function applyCanvasZoom() {
+  const canvas = document.getElementById('iff-canvas');
+  const ilbm = iffState.ilbm;
+  if (!ilbm) return;
+  const { zoom } = iffState;
+  if (zoom === 0) {
+    // Fit mode
+    canvas.style.width = '';
+    canvas.style.height = '';
+    canvas.style.maxWidth = '100%';
+    canvas.style.maxHeight = '100%';
+  } else {
+    canvas.style.width = (ilbm.width * zoom) + 'px';
+    canvas.style.height = (ilbm.height * zoom) + 'px';
+    canvas.style.maxWidth = 'none';
+    canvas.style.maxHeight = 'none';
+  }
+  document.getElementById('iff-zoom-label').textContent =
+    zoom === 0 ? 'fit' : zoom + '×';
+}
+
+function iffZoom(factor) {
+  if (factor === 0) { iffState.zoom = 0; }
+  else { iffState.zoom = Math.max(0.25, Math.min(8, (iffState.zoom || 1) * factor)); }
+  applyCanvasZoom();
+}
+
+function showImageInfo(ilbm) {
+  document.getElementById('iff-image-info').style.display = 'flex';
+  document.getElementById('img-size-val').textContent = `${ilbm.width} × ${ilbm.height}`;
+  document.getElementById('img-depth-val').textContent = `${ilbm.nPlanes} bitplanes`;
+  document.getElementById('img-colors-val').textContent = `${Math.min(1 << ilbm.nPlanes, 256)}`;
+  const modes = [];
+  if (ilbm.isHAM) modes.push(ilbm.isHAM8 ? 'HAM8' : 'HAM6');
+  if (ilbm.isEHB) modes.push('EHB');
+  if (ilbm.isHires) modes.push('Hires');
+  if (ilbm.isInterlace) modes.push('Interlace');
+  document.getElementById('img-mode-val').textContent = modes.length ? modes.join('+') : 'Normal';
+  document.getElementById('img-comp-val').textContent = ilbm.compress ? 'ByteRun1' : 'None';
+  document.getElementById('img-aspect-val').textContent = `${ilbm.xAspect}:${ilbm.yAspect}`;
+}
+
+function showPalette(palette, numColors) {
+  const el = document.getElementById('iff-palette');
+  el.style.display = 'flex';
+  let html = '';
+  for (let i = 0; i < Math.min(numColors, 256); i++) {
+    const [r,g,b] = palette[i] || [0,0,0];
+    html += `<div class="pal-swatch" style="background:rgb(${r},${g},${b})"
+      title="Index ${i}: #${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')} (${r},${g},${b})"></div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════
+//  ANIMATION CONTROL
+// ════════════════════════════════════════════════════
+
+function startAnimation() {
+  iffState.animPlaying = true;
+  document.getElementById('anim-play-btn').textContent = '⏸';
+  document.getElementById('anim-play-btn').classList.add('active');
+  scheduleNextFrame();
+}
+
+function scheduleNextFrame() {
+  const { anim, animFps } = iffState;
+  if (!iffState.animPlaying || !anim) return;
+  const delay = anim.frameDelays[iffState.currentFrame] || Math.round(1000 / animFps);
+  iffState.animTimer = setTimeout(() => {
+    iffState.currentFrame = (iffState.currentFrame + 1) % anim.count;
+    drawFrameToCanvas(iffState.currentFrame);
+    scheduleNextFrame();
+  }, delay);
+}
+
+function stopAnimation() {
+  iffState.animPlaying = false;
+  if (iffState.animTimer) clearTimeout(iffState.animTimer);
+  const btn = document.getElementById('anim-play-btn');
+  if (btn) { btn.textContent = '▶'; btn.classList.remove('active'); }
+}
+
+function animToggle() {
+  if (iffState.animPlaying) stopAnimation();
+  else startAnimation();
+}
+
+function animStep(dir) {
+  stopAnimation();
+  const { anim } = iffState;
+  if (!anim) return;
+  iffState.currentFrame = (iffState.currentFrame + dir + anim.count) % anim.count;
+  drawFrameToCanvas(iffState.currentFrame);
+}
+
+function animSetFps(val) {
+  iffState.animFps = parseInt(val);
+  document.getElementById('anim-fps-val').textContent = val;
+}
+
+// ════════════════════════════════════════════════════
+//  AUDIO CONTROL
+// ════════════════════════════════════════════════════
+
+function drawWaveform(samples) {
+  const canvas = document.getElementById('iff-waveform-canvas');
+  const W = canvas.offsetWidth || 700;
+  const H = 120;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw waveform
+  const step = Math.max(1, Math.floor(samples.length / W));
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1;
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 3;
+  ctx.beginPath();
+  for (let x = 0; x < W; x++) {
+    const idx = Math.floor(x * samples.length / W);
+    let min = 0, max = 0;
+    for (let j = 0; j < step && idx+j < samples.length; j++) {
+      const v = samples[idx+j];
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    const yMin = H/2 + min * (H/2 - 2);
+    const yMax = H/2 + max * (H/2 - 2);
+    if (x === 0) ctx.moveTo(x, H/2);
+    ctx.lineTo(x, yMin);
+    ctx.lineTo(x, yMax);
+  }
+  ctx.stroke();
+
+  // Center line
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(0,255,136,0.2)';
+  ctx.beginPath();
+  ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+  ctx.stroke();
+}
+
+function buildVUMeter() {
+  const el = document.getElementById('vu-meter');
+  let html = '';
+  for (let i = 0; i < 12; i++) html += `<div class="vu-bar" id="vu-${i}" style="height:${(i+1)*2}px"></div>`;
+  el.innerHTML = html;
+}
+
+function audioToggle() {
+  if (iffState.isAudioPlaying) stopAudio();
+  else playAudio();
+}
+
+function playAudio() {
+  const { audio } = iffState;
+  if (!audio) return;
+
+  if (!iffState.audioCtx) iffState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const ctx = iffState.audioCtx;
+
+  const buf = ctx.createBuffer(1, audio.floatSamples.length, audio.sampleRate);
+  buf.getChannelData(0).set(audio.floatSamples);
+  iffState.audioBuffer = buf;
+
+  if (iffState.audioSource) try { iffState.audioSource.stop(); } catch(e) {}
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+
+  // Create analyser for VU meter
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  source.connect(analyser);
+  analyser.connect(ctx.destination);
+  iffState.analyser = analyser;
+
+  source.start();
+  iffState.audioSource = source;
+  iffState.audioStartTime = ctx.currentTime;
+  iffState.isAudioPlaying = true;
+  source.onended = () => { iffState.isAudioPlaying = false; updateAudioBtn(); };
+
+  updateAudioBtn();
+  animateAudioProgress();
+}
+
+function stopAudio() {
+  if (iffState.audioSource) {
+    try { iffState.audioSource.stop(); } catch(e) {}
+    iffState.audioSource = null;
+  }
+  iffState.isAudioPlaying = false;
+  updateAudioBtn();
+  if (iffState.audioAnimFrame) cancelAnimationFrame(iffState.audioAnimFrame);
+  document.getElementById('audio-progress-fill').style.width = '0%';
+  document.getElementById('audio-time-display').textContent = '0.00s';
+}
+
+function updateAudioBtn() {
+  const btn = document.getElementById('audio-play-btn');
+  if (!btn) return;
+  btn.textContent = iffState.isAudioPlaying ? '■ STOP' : '▶ PLAY';
+  btn.className = 'audio-play-btn' + (iffState.isAudioPlaying ? ' playing' : '');
+}
+
+function animateAudioProgress() {
+  const { audio, audioCtx, audioStartTime, isAudioPlaying, analyser } = iffState;
+  if (!isAudioPlaying || !audio) return;
+
+  const elapsed = audioCtx.currentTime - audioStartTime;
+  const duration = audio.floatSamples.length / audio.sampleRate;
+  const pct = Math.min(100, (elapsed / duration) * 100);
+  document.getElementById('audio-progress-fill').style.width = pct + '%';
+  document.getElementById('audio-time-display').textContent = elapsed.toFixed(2) + 's';
+
+  // VU meter
+  if (analyser) {
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(buf);
+    for (let i = 0; i < 12; i++) {
+      const avg = buf.slice(i*4, i*4+4).reduce((a,b)=>a+b,0)/4;
+      const h = Math.max(2, (avg / 255) * 22);
+      const el = document.getElementById(`vu-${i}`);
+      if (el) el.style.height = h + 'px';
+    }
+  }
+
+  iffState.audioAnimFrame = requestAnimationFrame(animateAudioProgress);
+}
+
+// ════════════════════════════════════════════════════
+//  CHUNK TREE RENDERER
+// ════════════════════════════════════════════════════
+
+const CHUNK_DESCS = {
+  FORM:'Container', LIST:'List', CAT:'Concatenation',
+  BMHD:'Bitmap Header', CMAP:'Color Map', BODY:'Image/Sample Data',
+  CAMG:'Amiga Viewport Mode', GRAB:'Hotspot', DEST:'Destination Merge',
+  SPRT:'Sprite', CRNG:'Color Range / Cycling', CCRT:'Color Cycle',
+  VHDR:'Voice Header', ATCK:'Attack', RLSE:'Release',
+  NAME:'Name', AUTH:'Author', COPYRIGHT:'Copyright', ANNO:'Annotation',
+  TEXT:'Text', FVER:'File Version',
+  ANHD:'Animation Header', DLTA:'Delta Frame',
+  MHDR:'Music Header', FORM:'IFF Container',
+};
+
+function renderChunkTree(chunks, data) {
+  function renderChunk(c, depth) {
+    const indent = depth * 16;
+    const desc = CHUNK_DESCS[c.id] || (c.subType ? `${c.subType} container` : '');
+    const isContainer = c.children !== null;
+    const hexPreview = !isContainer && c.size > 0
+      ? Array.from(data.slice(c.dataStart, Math.min(c.dataStart + 8, c.dataEnd)))
+          .map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ')
+      : '';
+    const sizeStr = c.size >= 1024 ? (c.size/1024).toFixed(1)+'K' : c.size+'B';
+
+    let html = `<div class="chunk-node">
+      <div class="chunk-header" style="padding-left:${8+indent}px">
+        <span class="chunk-id">${c.id}</span>
+        ${c.subType ? `<span class="iff-badge" style="font-size:9px">${c.subType}</span>` : ''}
+        <span class="chunk-size">${sizeStr}</span>
+        <span class="chunk-desc">${desc}</span>
+        ${hexPreview ? `<span class="chunk-hex">${hexPreview}…</span>` : ''}
+      </div>`;
+    if (c.children && c.children.length > 0) {
+      html += `<div class="chunk-children">`;
+      for (const child of c.children) html += renderChunk(child, depth + 1);
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+  return chunks.map(c => renderChunk(c, 0)).join('');
+}
+
+function renderIFFProps(chunks, data, formType) {
+  const sections = [];
+  if (formType === 'ILBM' || formType === 'ANIM') {
+    const bmhdChunk = findChunk(chunks, 'BMHD');
+    const camgChunk = findChunk(chunks, 'CAMG');
+    const cmapChunk = findChunk(chunks, 'CMAP');
+    if (bmhdChunk) {
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const b = bmhdChunk.dataStart;
+      const camg = camgChunk ? view.getUint32(camgChunk.dataStart, false) : 0;
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">Bitmap Header</div>
+        <div class="kv-grid">
+          <div class="kv-key">Dimensions</div><div class="kv-val highlight">${view.getUint16(b,false)} × ${view.getUint16(b+2,false)} px</div>
+          <div class="kv-key">Bitplanes</div><div class="kv-val">${data[b+8]}</div>
+          <div class="kv-key">Colors</div><div class="kv-val">${1 << data[b+8]}</div>
+          <div class="kv-key">Masking</div><div class="kv-val">${['None','Has Mask','Transparent Color','Lasso'][data[b+9]]||data[b+9]}</div>
+          <div class="kv-key">Compression</div><div class="kv-val ${data[b+10]?'highlight':'warn'}">${data[b+10]?'ByteRun1':'None'}</div>
+          <div class="kv-key">Pixel Aspect</div><div class="kv-val">${data[b+14]}:${data[b+15]}</div>
+          <div class="kv-key">Page Size</div><div class="kv-val">${view.getInt16(b+16,false)} × ${view.getInt16(b+18,false)}</div>
+          ${camgChunk?`<div class="kv-key">CAMG Flags</div><div class="kv-val info">0x${camg.toString(16).toUpperCase().padStart(8,'0')}</div>`:''}
+          ${camg&0x0800?'<div class="kv-key">HAM Mode</div><div class="kv-val amber">Hold And Modify</div>':''}
+          ${camg&0x0080?'<div class="kv-key">EHB Mode</div><div class="kv-val amber">Extra Half-Brite</div>':''}
+          ${camg&0x8000?'<div class="kv-key">Resolution</div><div class="kv-val">Hires</div>':''}
+          ${camg&0x0004?'<div class="kv-key">Scan</div><div class="kv-val">Interlaced</div>':''}
+        </div>
+      </div>`);
+    }
+    if (cmapChunk) {
+      const numColors = Math.floor(cmapChunk.size / 3);
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">Color Map</div>
+        <div class="kv-grid">
+          <div class="kv-key">Palette Size</div><div class="kv-val">${numColors} colors</div>
+        </div>
+      </div>`);
+    }
+  }
+  if (formType === '8SVX') {
+    const audio = iffState.audio;
+    if (audio) {
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">Voice Header</div>
+        <div class="kv-grid">
+          <div class="kv-key">Sample Rate</div><div class="kv-val highlight">${audio.sampleRate} Hz</div>
+          <div class="kv-key">Duration</div><div class="kv-val">${(audio.floatSamples.length/audio.sampleRate).toFixed(3)} seconds</div>
+          <div class="kv-key">Total Samples</div><div class="kv-val">${audio.floatSamples.length.toLocaleString()}</div>
+          <div class="kv-key">One-shot</div><div class="kv-val">${audio.oneShotSamples}</div>
+          <div class="kv-key">Repeat</div><div class="kv-val">${audio.repeatSamples}</div>
+          <div class="kv-key">Octaves</div><div class="kv-val">${audio.octaves}</div>
+          <div class="kv-key">Compression</div><div class="kv-val ${audio.compression?'warn':'highlight'}">${audio.compression===1?'Fibonacci Delta':'None (raw PCM)'}</div>
+          <div class="kv-key">Volume</div><div class="kv-val">${audio.volume} (${((audio.volume/65536)*100).toFixed(1)}%)</div>
+        </div>
+      </div>`);
+    }
+  }
+  // Generic info from chunks
+  ['NAME','AUTH','COPYRIGHT','ANNO','TEXT'].forEach(id => {
+    const c = findChunk(chunks, id);
+    if (!c) return;
+    let txt = '';
+    for (let i = c.dataStart; i < c.dataEnd && data[i]; i++) txt += String.fromCharCode(data[i]);
+    if (txt) sections.push(`<div class="analysis-section">
+      <div class="analysis-title">${CHUNK_DESCS[id]||id}</div>
+      <div class="kv-grid"><div class="kv-key">${id}</div><div class="kv-val">${txt}</div></div>
+    </div>`);
+  });
+  return sections.join('') || '<div style="padding:20px;font-family:var(--font-mono);font-size:12px;color:var(--wb-dim);text-align:center">No properties available</div>';
+}
+
+// ════════════════════════════════════════════════════
+//  IFF MODAL UI
+// ════════════════════════════════════════════════════
+
+function closeIFF() {
+  stopAnimation();
+  stopAudio();
+  document.getElementById('iff-modal').classList.remove('open');
+  iffState.ilbm = null;
+  iffState.anim = null;
+  iffState.audio = null;
+}
+
+function showIFFTab(name) {
+  const tabMap = { 'preview': 'iff-view-preview', 'chunks': 'iff-view-chunks', 'info': 'iff-view-info' };
+  Object.entries(tabMap).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = key === name ? (key === 'preview' ? 'flex' : 'block') : 'none';
+  });
+}
+
+document.querySelectorAll('.iff-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.iff-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    showIFFTab(tab.dataset.iffTab);
+  });
+});
+
+// Close on backdrop click
+document.getElementById('iff-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('iff-modal')) closeIFF();
+});
+
+// Draggable window
+(function() {
+  const win = document.getElementById('iff-window');
+  const bar = document.getElementById('iff-titlebar');
+  let dragging = false, ox = 0, oy = 0;
+  bar.addEventListener('mousedown', e => {
+    dragging = true;
+    ox = e.clientX - win.offsetLeft;
+    oy = e.clientY - win.offsetTop;
+    win.style.position = 'absolute';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    win.style.left = (e.clientX - ox) + 'px';
+    win.style.top  = (e.clientY - oy) + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+</script>
+</body>
+</html>

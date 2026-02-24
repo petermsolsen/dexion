@@ -4,7 +4,7 @@ import logo from '../assets/logo.png'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const close = () => setMenuOpen(false)
+  const close = () => { setMenuOpen(false) }
 
   return (
     <header className="header">
@@ -13,9 +13,9 @@ export default function Header() {
       </Link>
 
       <nav className={`nav${menuOpen ? ' open' : ''}`}>
-        <Link to="/"             onClick={close}>Home</Link>
-
-        <Link to="/works"        onClick={close}>Works</Link>
+        <Link to="/" onClick={close}>Home</Link>
+        <Link to="/works" onClick={close}>Works</Link>
+        <Link to="/works/adf-analyzer" onClick={close}>ADF</Link>
         <Link to="/achievements" onClick={close}>Achievements</Link>
         <Link to="/members"      onClick={close}>Members</Link>
       </nav>
