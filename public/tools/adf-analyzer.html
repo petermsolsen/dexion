@@ -1330,6 +1330,98 @@
     background: var(--wb-green);
     transition: height 0.05s;
   }
+
+  /* ── FILE CONTENT TAB ── */
+  #file-content-display {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .fc-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+    background: var(--wb-panel2);
+    flex-wrap: wrap;
+  }
+  .fc-filename {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--wb-amber);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fc-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--wb-border);
+    color: var(--wb-dim);
+    border-radius: 2px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .fc-body {
+    flex: 1;
+    padding: 16px;
+  }
+  .fc-text-display {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--wb-green);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 0;
+  }
+  .fc-image-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: repeating-conic-gradient(#111 0% 25%, #181828 0% 50%) 0 0 / 20px 20px;
+    border: 1px solid var(--wb-border);
+    border-radius: 4px;
+    padding: 20px;
+    min-height: 200px;
+  }
+  #fc-canvas {
+    image-rendering: pixelated;
+    max-width: 100%;
+    max-height: 70vh;
+    display: block;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+  .fc-image-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--wb-dim);
+  }
+  .fc-no-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 20px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--wb-dim);
+    opacity: 0.6;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -1424,6 +1516,7 @@
         <div class="tab active" data-tab="diskmap">Disk Map</div>
         <div class="tab" data-tab="bootblock">Boot Block</div>
         <div class="tab" data-tab="hexview">Hex Viewer</div>
+        <div class="tab" data-tab="filecontent">File Content</div>
       </div>
       <!-- DISK MAP -->
       <div class="tab-content" id="tab-diskmap">
@@ -1449,6 +1542,15 @@
           <div class="empty-state" style="height:300px">
             <div class="empty-state-icon">🔢</div>
             <div class="empty-state-text">SELECT A SECTOR</div>
+          </div>
+        </div>
+      </div>
+      <!-- FILE CONTENT -->
+      <div class="tab-content" id="tab-filecontent" style="display:none">
+        <div id="file-content-display">
+          <div class="empty-state" style="height:300px">
+            <div class="empty-state-icon">📄</div>
+            <div class="empty-state-text">NO FILE OPENED</div>
           </div>
         </div>
       </div>
@@ -1689,6 +1791,8 @@ let currentSector = 0;
 let sectorTypes = []; // array of type strings per sector
 let blockChecksumValid = {}; // sector -> bool, only set for non-free blocks
 let activeChain = []; // sectors currently highlighted as a chain
+let currentFileChain = []; // sector list for file chain navigation
+let currentFileChainIndex = -1; // current position within currentFileChain
 
 function u8(sector, offset) {
   return diskView.getUint8(sector * ADF.SECTOR_SIZE + offset);
@@ -1719,13 +1823,16 @@ function bcplStr(sector, offset) {
 }
 
 function calcBootChecksum(data) {
-  // B10 fix: use >>> 0 to keep each word unsigned before accumulating
+  // Amiga boot block checksum: blank checksum word at offset 4-7, sum all 32-bit
+  // words with 32-bit addition + carry, return one's complement of sum.
   let sum = 0;
   const limit = Math.min(1024, data.length - 3);
   for (let i = 0; i < limit; i += 4) {
-    if (i === 4) continue; // skip stored checksum field
+    if (i === 4) continue; // checksum field is blanked (treated as 0)
     const v = ((data[i] << 24) | (data[i+1] << 16) | (data[i+2] << 8) | data[i+3]) >>> 0;
+    const old = sum;
     sum = (sum + v) >>> 0;
+    if (sum < old) sum = (sum + 1) >>> 0; // add carry on 32-bit overflow
   }
   return (~sum) >>> 0;
 }
@@ -2240,11 +2347,11 @@ function renderTree(entries) {
       // Use data attributes instead of inline onclick strings to safely pass filename
       const safeN = safeHtml(file.name);
       const openBtn = `<button class="iff-open-btn"
-        onclick="event.stopPropagation();openFileViewer(${file.sector},this.dataset.name,${file.size})"
-        data-name="${safeN}" title="Open in viewer">OPEN</button>`;
+        onclick="event.stopPropagation();openFileContent(${file.sector},this.dataset.name,${file.size})"
+        data-name="${safeN}" title="Open file content">OPEN</button>`;
       html += `<div class="tree-item file"
-        onclick="selectSector(${file.sector})"
-        ondblclick="openFileViewer(${file.sector},this.querySelector('[data-name]').dataset.name,${file.size})"
+        onclick="selectFileSector(${file.sector})"
+        ondblclick="openFileContent(${file.sector},this.querySelector('[data-name]').dataset.name,${file.size})"
         style="padding-left:${(depth+1)*4+8}px">
         <span class="tree-icon">${icon}</span>
         <span>${safeN}</span>
@@ -2550,6 +2657,17 @@ function renderHexView(sector) {
 function selectSector(s) {
   currentSector = s;
 
+  // Track position within file chain (or clear if sector is outside it)
+  if (currentFileChain.length > 0) {
+    const idx = currentFileChain.indexOf(s);
+    if (idx !== -1) {
+      currentFileChainIndex = idx;
+    } else {
+      currentFileChain = [];
+      currentFileChainIndex = -1;
+    }
+  }
+
   // Update selected cell highlight
   document.querySelectorAll('.track-cell.selected-cell').forEach(el => el.classList.remove('selected-cell'));
   const cell = document.getElementById(`cell-${s}`);
@@ -2581,10 +2699,17 @@ function selectSector(s) {
   // Update hex view
   if (diskData) {
     document.getElementById('hex-view').innerHTML = renderHexView(s);
-    document.getElementById('hex-page-info').textContent = `Sector ${s} / ${ADF.TOTAL_SECTORS}`;
+    if (currentFileChain.length > 0) {
+      document.getElementById('hex-page-info').textContent =
+        `File block ${currentFileChainIndex + 1} / ${currentFileChain.length}  (Sector ${s})`;
+      document.getElementById('hex-prev').disabled = currentFileChainIndex <= 0;
+      document.getElementById('hex-next').disabled = currentFileChainIndex >= currentFileChain.length - 1;
+    } else {
+      document.getElementById('hex-page-info').textContent = `Sector ${s} / ${ADF.TOTAL_SECTORS}`;
+      document.getElementById('hex-prev').disabled = s <= 0;
+      document.getElementById('hex-next').disabled = s >= ADF.TOTAL_SECTORS - 1;
+    }
     document.getElementById('hex-controls').style.display = 'flex';
-    document.getElementById('hex-prev').disabled = s <= 0;
-    document.getElementById('hex-next').disabled = s >= ADF.TOTAL_SECTORS - 1;
     const typeLabel = document.getElementById('hex-sector-type');
     const type = sectorTypes[s] || 'free';
     typeLabel.className = `status-pill ${type !== 'free' ? 'loaded' : 'idle'}`;
@@ -2864,6 +2989,8 @@ async function loadADF(file) {
   diskView = new DataView(buf);
   activeChain = [];
   blockChecksumValid = {};
+  currentFileChain = [];
+  currentFileChainIndex = -1;
 
   barEl.style.width = '40%';
 
@@ -2977,8 +3104,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     const name = tab.dataset.tab;
-    ['diskmap','bootblock','hexview'].forEach(t => {
-      document.getElementById(`tab-${t}`).style.display = t === name ? 'block' : 'none';
+    ['diskmap','bootblock','hexview','filecontent'].forEach(t => {
+      const el = document.getElementById(`tab-${t}`);
+      if (el) el.style.display = t === name ? 'block' : 'none';
     });
     if (name === 'hexview') {
       document.getElementById('hex-controls').style.display = diskData ? 'flex' : 'none';
@@ -2988,9 +3116,21 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// Hex nav
-document.getElementById('hex-prev').addEventListener('click', () => selectSector(currentSector - 1));
-document.getElementById('hex-next').addEventListener('click', () => selectSector(currentSector + 1));
+// Hex nav — follows file data chain when a file is selected from the tree
+document.getElementById('hex-prev').addEventListener('click', () => {
+  if (currentFileChain.length > 0 && currentFileChainIndex > 0) {
+    selectSector(currentFileChain[currentFileChainIndex - 1]);
+  } else if (currentFileChain.length === 0 && currentSector > 0) {
+    selectSector(currentSector - 1);
+  }
+});
+document.getElementById('hex-next').addEventListener('click', () => {
+  if (currentFileChain.length > 0 && currentFileChainIndex < currentFileChain.length - 1) {
+    selectSector(currentFileChain[currentFileChainIndex + 1]);
+  } else if (currentFileChain.length === 0 && currentSector < ADF.TOTAL_SECTORS - 1) {
+    selectSector(currentSector + 1);
+  }
+});
 
 // Keyboard
 document.addEventListener('keydown', e => {
@@ -3002,6 +3142,204 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowUp' && currentSector > 22) selectSector(currentSector - 22);
   if (e.key === 'ArrowDown' && currentSector < ADF.TOTAL_SECTORS - 22) selectSector(currentSector + 22);
 });
+
+// ── SELECT FILE FROM TREE — sets up file chain navigation ─────────────────────
+function selectFileSector(headerSector) {
+  const chain = buildChainFromFileHeader(headerSector);
+  // Build ordered sector list: header first, then data blocks in chain order
+  currentFileChain = chain.map(e => e.sector);
+  currentFileChainIndex = 0;
+  highlightChain(chain);
+  selectSector(headerSector);
+}
+
+// ════════════════════════════════════════════════════
+//  FILE CONTENT TAB
+// ════════════════════════════════════════════════════
+
+function openFileContent(sector, name, size) {
+  if (!diskData) return;
+  const data = readFileData(sector, size);
+
+  // Switch to File Content tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-tab="filecontent"]').classList.add('active');
+  ['diskmap','bootblock','hexview','filecontent'].forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if (el) el.style.display = t === 'filecontent' ? 'block' : 'none';
+  });
+  document.getElementById('hex-controls').style.display = 'none';
+
+  const display = document.getElementById('file-content-display');
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  const sizeStr = formatSize(size);
+
+  // Helper: file header HTML
+  function makeFileHeader(typeLabel) {
+    return `<div class="fc-header">
+      <span class="fc-filename">${safeHtml(name)}</span>
+      <span class="fc-badge">${typeLabel}</span>
+      <span class="fc-badge">${sizeStr}</span>
+    </div>`;
+  }
+
+  // Check if IFF
+  const isIFF = data.length >= 12 &&
+    String.fromCharCode(data[0],data[1],data[2],data[3]) === 'FORM';
+
+  if (isIFF) {
+    const topChunks = parseIFF(data);
+    const formType = topChunks[0]?.subType || '????';
+    const typeLabel = 'IFF/' + formType;
+
+    if (formType === 'ILBM') {
+      const innerChunks = topChunks[0]?.children || topChunks;
+      try {
+        const ilbm = decodeILBM(data, innerChunks);
+        if (ilbm) {
+          const modes = [
+            ilbm.isHAM ? (ilbm.isHAM8 ? 'HAM8' : 'HAM6') : '',
+            ilbm.isEHB ? 'EHB' : '',
+            ilbm.isHires ? 'Hires' : '',
+            ilbm.isInterlace ? 'Interlace' : ''
+          ].filter(Boolean).join('+') || 'Normal';
+          display.innerHTML = makeFileHeader(typeLabel) +
+            `<div class="fc-body">
+              <div class="fc-image-wrap"><canvas id="fc-canvas"></canvas></div>
+              <div class="fc-image-stats">
+                <span>${ilbm.width} × ${ilbm.height} px</span>
+                <span>${ilbm.nPlanes} planes</span>
+                <span>${1 << ilbm.nPlanes} colors</span>
+                <span>${modes}</span>
+                <span>${ilbm.compress ? 'ByteRun1' : 'Uncompressed'}</span>
+              </div>
+            </div>`;
+          const canvas = document.getElementById('fc-canvas');
+          canvas.width = ilbm.width;
+          canvas.height = ilbm.height;
+          canvas.getContext('2d').putImageData(
+            new ImageData(ilbm.pixels, ilbm.width, ilbm.height), 0, 0);
+          return;
+        }
+      } catch(e) { console.error('ILBM decode error:', e); }
+    }
+
+    if (formType === 'ANIM') {
+      try {
+        const anim = decodeANIM(data, topChunks);
+        if (anim && anim.count > 0) {
+          display.innerHTML = makeFileHeader(typeLabel) +
+            `<div class="fc-body">
+              <div class="fc-image-wrap"><canvas id="fc-canvas"></canvas></div>
+              <div class="fc-image-stats">
+                <span>ANIM: ${anim.count} frames</span>
+                <span>${anim.ilbm.width} × ${anim.ilbm.height} px</span>
+                <span>${anim.ilbm.nPlanes} planes</span>
+              </div>
+            </div>`;
+          const canvas = document.getElementById('fc-canvas');
+          canvas.width = anim.ilbm.width;
+          canvas.height = anim.ilbm.height;
+          canvas.getContext('2d').putImageData(
+            new ImageData(anim.frames[0], anim.ilbm.width, anim.ilbm.height), 0, 0);
+          return;
+        }
+      } catch(e) { console.error('ANIM decode error:', e); }
+    }
+
+    if (formType === '8SVX') {
+      const innerChunks = topChunks[0]?.children || topChunks;
+      try {
+        const audio = decode8SVX(data, innerChunks);
+        if (audio) {
+          display.innerHTML = makeFileHeader(typeLabel) +
+            `<div class="fc-body"><div class="kv-grid" style="max-width:400px">
+              <div class="kv-key">Type</div><div class="kv-val highlight">8SVX Audio Sample</div>
+              <div class="kv-key">Sample Rate</div><div class="kv-val">${audio.sampleRate} Hz</div>
+              <div class="kv-key">Duration</div>
+              <div class="kv-val">${(audio.floatSamples.length/audio.sampleRate).toFixed(3)} s</div>
+              <div class="kv-key">Samples</div>
+              <div class="kv-val">${audio.floatSamples.length.toLocaleString()}</div>
+              <div class="kv-key">Compression</div>
+              <div class="kv-val">${audio.compression===1?'Fibonacci Delta':'None (PCM)'}</div>
+              <div class="kv-key">Volume</div>
+              <div class="kv-val">${((audio.volume/65536)*100).toFixed(1)}%</div>
+              ${audio.name ? `<div class="kv-key">Name</div><div class="kv-val">${safeHtml(audio.name)}</div>` : ''}
+            </div></div>`;
+          return;
+        }
+      } catch(e) { console.error('8SVX decode error:', e); }
+    }
+
+    // Generic IFF — no preview
+    display.innerHTML = makeFileHeader(typeLabel) +
+      `<div class="fc-body"><div class="fc-no-preview">
+        <div style="font-size:36px">📦</div>
+        <div>IFF ${formType}</div>
+        <div style="font-size:11px">No preview available for this IFF type</div>
+      </div></div>`;
+    return;
+  }
+
+  // Text detection
+  if (isTextData(data)) {
+    let text = '';
+    const maxChars = 65536;
+    for (let i = 0; i < Math.min(data.length, maxChars); i++) {
+      const c = data[i];
+      if (c === 0) break;
+      text += String.fromCharCode(c);
+    }
+    if (data.length > maxChars) text += `\n[… ${(data.length - maxChars).toLocaleString()} more bytes]`;
+    display.innerHTML = makeFileHeader('TEXT') +
+      `<div class="fc-body"><pre class="fc-text-display">${safeHtml(text)}</pre></div>`;
+    return;
+  }
+
+  // Binary — show hex dump of first 512 bytes
+  display.innerHTML = makeFileHeader(ext.toUpperCase() || 'BINARY') +
+    `<div class="fc-body">${renderFileHexDump(data)}</div>`;
+}
+
+function isTextData(data) {
+  if (data.length === 0) return false;
+  const check = Math.min(data.length, 512);
+  let printable = 0;
+  for (let i = 0; i < check; i++) {
+    const c = data[i];
+    if (c === 0) return false; // null byte = binary
+    if ((c >= 0x20 && c < 0x7f) || c === 0x09 || c === 0x0a || c === 0x0d) printable++;
+  }
+  return printable / check > 0.85;
+}
+
+function renderFileHexDump(data) {
+  const limit = Math.min(data.length, 512);
+  let html = '<div style="font-family:var(--font-mono);font-size:12px;line-height:1.8">';
+  for (let row = 0; row * 16 < limit; row++) {
+    const offset = row * 16;
+    let bytes = '';
+    let ascii = '';
+    for (let col = 0; col < 16 && offset + col < limit; col++) {
+      const b = data[offset + col];
+      const isPrint = b >= 0x20 && b < 0x7f;
+      const cls = b === 0 ? 'zero' : isPrint ? 'ascii-print' : '';
+      bytes += `<span class="hex-b ${cls}">${b.toString(16).padStart(2,'0').toUpperCase()}</span>`;
+      if (col === 7) bytes += `<span class="hex-sep">·</span>`;
+      ascii += isPrint ? String.fromCharCode(b) : '·';
+    }
+    html += `<div class="hex-row">
+      <span class="hex-addr">+${offset.toString(16).padStart(4,'0').toUpperCase()}</span>
+      <div class="hex-bytes">${bytes}</div>
+      <span class="hex-ascii">${ascii.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }
+  if (data.length > limit) {
+    html += `<div style="padding:8px 4px;color:var(--wb-dim);font-size:10px">… ${(data.length - limit).toLocaleString()} more bytes</div>`;
+  }
+  html += '</div>';
+  return html;
+}
 
 // ════════════════════════════════════════════════════
 //  FILE EXTRACTION FROM ADF
