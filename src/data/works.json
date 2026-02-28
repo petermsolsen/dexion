@@ -1,82 +1,594 @@
 [
   {
-    "title": "Digital Dreams",
+    "title": "Dexion’s Demo",
     "platform": "C64",
-    "type": "Demo",
-    "year": "1984",
-    "desc": "Our breakthrough demo featuring advanced raster bars, sprite multiplexing, and original SID chip music. Won 2nd place at Venlo Meeting.",
-    "crew": ["Code: Matrix", "Music: Soundwave", "Graphics: Pixel"]
-  },
-  {
-    "title": "Plasma Storm",
-    "platform": "C64",
-    "type": "Demo",
-    "year": "1986",
-    "desc": "Mesmerizing plasma effects using creative character mode tricks. One of the smoothest plasma implementations on C64.",
-    "crew": ["Code: Matrix", "Music: Soundwave"]
-  },
-  {
-    "title": "Copper Madness",
-    "platform": "Amiga",
     "type": "Demo",
     "year": "1987",
-    "desc": "Revolutionary copper effects demo that pushed the Amiga hardware to its limits. Our first Amiga release.",
-    "crew": ["Code: Guru", "Music: Synth Master", "Graphics: Art Attack"]
+    "desc": "",
+    "crew": ["Code:", "Music:", "Graphics:"]
   },
   {
-    "title": "Dexion Megademo 1",
-    "platform": "Amiga",
-    "type": "Mega Demo",
-    "year": "1988",
-    "desc": "Revolutionary effects demo that pushed the Amiga hardware to its limits. Our first Mega demo release on Amiga that won a competition.",
-    "crew": ["Code: Mr. Mega Mind, Liteace, Pet", "Music: Future Freak", "Graphics: Tox"]
-  },
-  {
-    "title": "Beyond Reality",
-    "platform": "Amiga",
+    "title": "Divinity",
+    "platform": "C64",
     "type": "Demo",
-    "year": "1991",
-    "desc": "Award-winning megademo with 3D vectors, morphing objects, and atmospheric soundtrack. Won 1st place at The Party.",
-    "crew": ["Code: Guru & Coder X", "Music: Synth Master", "Graphics: Pixel & Art Attack"]
+    "year": "1987",
+    "desc": "",
+    "crew": ["Code:", "Music:", "Graphics:"]
   },
-  {
-    "title": "Liquid Dreams",
-    "platform": "Amiga",
-    "type": "Demo",
-    "year": "1991",
-    "desc": "Experimental demo exploring fluid dynamics and distortion effects. Featured original tracked modules.",
-    "crew": ["Code: Coder X", "Music: Synth Master", "Graphics: Art Attack"]
-  },
-  {
-    "title": "Chrome Dimension",
-    "platform": "Amiga",
-    "type": "Demo",
-    "year": "1992",
-    "desc": "Metallic reflections and chrome-mapped objects. Pushed texture mapping on standard Amiga 500.",
-    "crew": ["Code: Guru", "Music: Synth Master & Guest", "Graphics: Pixel"]
-  },
-  {
-    "title": "Nexus",
-    "platform": "Amiga",
-    "type": "Demo",
-    "year": "1993",
-    "desc": "Our most technically advanced demo. Real-time texture mapping, particle systems, and seamless transitions.",
-    "crew": ["Code: Guru & Matrix", "Music: Soundwave", "Graphics: Pixel & Art Attack"]
-  },
-  {
-    "title": "Vector Nights",
-    "platform": "Amiga",
-    "type": "64k Intro",
-    "year": "1993",
-    "desc": "Highly optimized 64k intro with full 3D vector engine and procedurally generated graphics.",
-    "crew": ["Code: Coder X", "Music: Synth Master"]
-  },
-  {
-    "title": "Farewell to Silicon",
-    "platform": "Amiga",
-    "type": "Demo",
-    "year": "1995",
-    "desc": "Our final release — a nostalgic journey through our decade of demos. Combined our best techniques as a tribute to the machines that shaped us.",
-    "crew": ["All Members", "Special Thanks: The Scene"]
-  }
+{
+"title": "Platoon",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Auf Wiedersehen Monty Tune",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Bong 13",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Cooperdemo",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Mag Micro",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Ranking",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Roadrunner",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Ugly",
+"platform": "C64",
+"type": "Demo",
+"year": "1987",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "First For Dexion",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Rocky Star",
+"platform": "C64",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Cool’n’Cagey",
+"platform": "C64",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Code Mix",
+"platform": "C64",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Hot-Package 04",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "WOW Party Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Sinus Demo",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": " Pet’s Own Intro",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1988",
+"desc": "",
+"crew": ["Code: Pet", "Music:", "Graphics: Tox"]
+},
+{
+"title": "New Swappers",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "One Arm",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Spaceman Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1988",
+"desc": "with Danish Demo Duo",
+"crew": ["Code: Pet", "Music:", "Graphics: Tox"]
+},
+{
+"title": "New Dexion-Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Sine Sculp Intro 1.0",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Pandora",
+"platform": "C64",
+"type": "Cracktro",
+"year": "1988",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Party Informer",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1988",
+"desc": "Invitation",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Megademo",
+"platform": "Amiga",
+"type": "Megademo",
+"year": "1989",
+"desc": "First Mega Demo",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Scroller Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1989",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Hard ’n’ Heavy",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1989",
+"desc": "with Odyssey",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Music Disk",
+"platform": "Amiga",
+"type": "Music",
+"year": "1989",
+"desc": "Musicdisk (with The Silents & Warfalcons)",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Chinese Karate",
+"platform": "Amiga",
+"type": "Cracktro",
+"year": "1989",
+"desc": "with Supreme",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Party Informer",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1989",
+"desc": "Invitation",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Tox First Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1990",
+"desc": "with Odyssey",
+"crew": ["Code: Tox", "Music:", "Graphics: Tox"]
+},
+{
+"title": "Freddy the Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1990",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "A Journey Into Sound",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1990",
+"desc": "Musicdemo",
+"crew": ["Code: Tron", "Music: Orbit", "Graphics: Tox"]
+},
+{
+"title": "Turtle Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1990",
+"desc": "",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Tube Pack 01",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 02",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 03",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 04",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 05",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 06",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 07",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 08",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 08 - Menu disk",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 09",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 10",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 11",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "X-Mas Intro",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1990",
+"desc": "X-Mas 1990 Party Intro",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Party Demo",
+"platform": "Amiga",
+"type": "Demo",
+"year": "1990",
+"desc": "X-Mas 1990 Party",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Competition Pack",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "X-Mas 1990 Party Competition disk",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Wild Pack 12",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 13",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 15",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 16",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1990",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 18",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 19",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 20",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 21",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 22",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 23",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 24",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 25",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 26",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 27",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 28A",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 28B",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 29",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "Tube Pack 30",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "",
+"crew": ["Code: Pet", "Music: Future Freak", "Graphics: Tox, Natrix"]
+},
+{
+"title": "First Board Intro",
+"platform": "Amiga",
+"type": "Intro",
+"year": "1991",
+"desc": "BBStro",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Amega Party Music Competition Pack",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "with Cryptoburners, Fairlight, Violence",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Amega Party Graphics Competition Pack",
+"platform": "Amiga",
+"type": "Pack",
+"year": "1991",
+"desc": "with Cryptoburners, Fairlight, Violence",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Blue Moon",
+"platform": "Amiga",
+"type": "Game",
+"year": "1991",
+"desc": "Game Production",
+"crew": ["Code: Tox", "Music: Tox", "Graphics: Tox"]
+},
+{
+"title": "Interuptor Pro 0.9 ",
+"platform": "Amiga",
+"type": "Graphics",
+"year": "1992",
+"desc": "Graphics / Font Intro",
+"crew": ["Code:", "Music:", "Graphics:"]
+},
+{
+"title": "Music of Dawn",
+"platform": "Amiga",
+"type": "Music",
+"year": "1992",
+"desc": "Musicdisk (Artstate & Dexion)",
+"crew": ["Code:", "Music:", "Graphics:"]
+}
 ]

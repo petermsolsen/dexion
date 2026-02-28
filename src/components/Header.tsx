@@ -13,11 +13,11 @@ export default function Header() {
       </Link>
 
       <nav className={`nav${menuOpen ? ' open' : ''}`}>
-        <Link to="/" onClick={close}>Home</Link>
-        <Link to="/works" onClick={close}>Works</Link>
-        <Link to="/works/adf-analyzer" onClick={close}>ADF</Link>
-        <Link to="/achievements" onClick={close}>Achievements</Link>
-        <Link to="/members"      onClick={close}>Members</Link>
+        <Link to="/#hero"           onClick={close}>Home</Link>
+        <Link to="/#achievements"   onClick={close}>Achievements</Link>
+        <Link to="/#works"          onClick={close}>Works</Link>
+        <Link to="/works/adf-analyzer" onClick={close}>ADFTool</Link>
+        <Link to="/members"         onClick={close}>Members</Link>
       </nav>
 
       <button
