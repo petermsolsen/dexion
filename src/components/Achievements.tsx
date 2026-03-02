@@ -38,6 +38,7 @@ export default function Achievements() {
                   <th>Demo</th>
                   <th>Event</th>
                   <th>Category</th>
+                  <th>Platform</th>
                 </tr>
               </thead>
               <tbody>
@@ -48,6 +49,9 @@ export default function Achievements() {
                     <td className="td-demo">{a.demo}</td>
                     <td className="td-event">{a.event}</td>
                     <td><span className="tag" style={{ marginLeft: 0 }}>{a.type}</span></td>
+                    <td className="td-platform">
+                      <span className={`badge ${a.platform === 'C64' ? 'c64-badge' : 'amiga-badge'}`}>{a.platform}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

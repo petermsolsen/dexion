@@ -32,9 +32,9 @@ export default function Header() {
         <a href="#hero"         onClick={e => scrollTo(e, 'hero')}>Home</a>
         <a href="#history"      onClick={e => scrollTo(e, 'history')}>History</a>
         <a href="#achievements" onClick={e => scrollTo(e, 'achievements')}>Achievements</a>
+        <a href="#members" onClick={e => scrollTo(e, 'members')}>Members</a>
         <a href="#works"        onClick={e => scrollTo(e, 'works')}>Works</a>
         <Link to="/works/adf-analyzer" onClick={close}>ADFTool</Link>
-        <Link to="/members"            onClick={close}>Members</Link>
       </nav>
 
       <button

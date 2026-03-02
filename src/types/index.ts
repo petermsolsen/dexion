@@ -20,6 +20,8 @@ export interface Award {
   demo: string
   event: string
   type: string
+  platform: WorkPlatform
+  link: string
 }
 
 export interface Work {

@@ -4,9 +4,9 @@ import Header           from './components/Header'
 import Hero             from './components/Hero'
 import History          from './components/History'
 import Achievements     from './components/Achievements'
+import Members          from './components/Members'
 import Works            from './components/Works'
 import Footer           from './components/Footer'
-import MembersPage      from './pages/MembersPage'
 import ADFAnalyzerPage  from './pages/ADFAnalyzerPage'
 
 function HomePage() {
@@ -17,6 +17,7 @@ function HomePage() {
         <Hero />
         <History />
         <Achievements />
+        <Members />
         <Works />
       </main>
       <Footer />
@@ -29,8 +30,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/"                   element={<HomePage />} />
-<Route path="/works/adf-analyzer" element={<ADFAnalyzerPage />} />
-        <Route path="/members"            element={<MembersPage />} />
+        <Route path="/works/adf-analyzer" element={<ADFAnalyzerPage />} />
       </Routes>
     </BrowserRouter>
   )

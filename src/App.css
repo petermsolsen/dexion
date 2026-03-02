@@ -623,7 +623,8 @@ main { padding-top: 80px; }
 .td-place { font-family: var(--heading-font); font-weight: 700; font-size: 0.9rem; }
 .td-demo  { font-weight: 600; color: #fff; }
 .td-event { color: var(--muted); font-size: 0.82rem; }
-
+.td-platform { color: var(--muted); font-size: 0.82rem; }
+.td-link { color: var(--muted); font-size: 0.82rem; }
 .place-1 { color: var(--gold); }
 .place-2 { color: var(--silver); }
 .place-3 { color: var(--bronze); }
