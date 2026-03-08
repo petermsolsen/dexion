@@ -150,6 +150,73 @@
     0%,100% { box-shadow: 0 0 8px rgba(0,255,136,0.2); }
     50% { box-shadow: 0 0 16px rgba(0,255,136,0.4); }
   }
+  .status-pill.virus-alert {
+    color: var(--wb-red);
+    border-color: var(--wb-red);
+    background: rgba(255,50,50,0.12);
+    animation: virusPulse 0.8s ease-in-out infinite;
+  }
+  @keyframes virusPulse {
+    0%,100% { box-shadow: 0 0 8px rgba(255,50,50,0.3); }
+    50%      { box-shadow: 0 0 18px rgba(255,50,50,0.7); }
+  }
+
+  /* ── FONT VIEWER ─────────────────────────────────── */
+  .fc-badge-font {
+    background: rgba(170,100,255,0.15);
+    border-color: #aa66ff;
+    color: #cc88ff;
+  }
+  .fc-font-props {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--wb-border);
+    background: var(--wb-panel2);
+    flex-shrink: 0;
+  }
+  .fc-font-canvas-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  #fc-font-canvas {
+    display: block;
+    image-rendering: pixelated;
+    border: 1px solid var(--wb-border);
+    border-radius: 3px;
+  }
+  .fc-font-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  /* SMUS instrument tags */
+  .fc-smus-inst {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    background: rgba(0,85,170,0.15);
+    border: 1px solid rgba(0,85,170,0.35);
+    border-radius: 3px;
+    color: #88aaff;
+    white-space: nowrap;
+  }
+
+  /* ── VIRUS ALERT STYLES ──────────────────────────── */
+  .virus-alert {
+    border-left: 3px solid var(--wb-red) !important;
+    background: rgba(255,50,50,0.05);
+  }
+  .virus-hit {
+    animation: virusHitBlink 2s ease-in-out infinite;
+  }
+  @keyframes virusHitBlink {
+    0%,100% { background: rgba(255,50,50,0.07); }
+    50%      { background: rgba(255,50,50,0.13); }
+  }
 
   /* ── MAIN LAYOUT ── */
   #main {
@@ -431,6 +498,39 @@
 
   .tree-children.collapsed { display: none; }
 
+  /* ── Archive expansion rows ── */
+  .arc-file-entry { }
+  .arc-file-entry .tree-chevron { transition: transform 0.15s; }
+
+  .arc-file-row td,
+  .arc-dir-row  td { background: rgba(255,136,0,0.03); }
+  .arc-file-row:hover td,
+  .arc-dir-row:hover  td { background: rgba(255,136,0,0.10); }
+  .arc-dir-row  td { color: rgba(255,200,80,0.8); }
+  .arc-file-row td { color: rgba(220,220,220,0.85); }
+
+  /* Left accent line on all archive-content rows */
+  .arc-file-row td:first-child,
+  .arc-dir-row  td:first-child {
+    border-left: 2px solid rgba(255,136,0,0.25);
+  }
+
+  .arc-loading-row td { color: var(--wb-dim); font-style: italic; }
+
+  @keyframes arc-spin { to { transform: rotate(360deg); } }
+  .arc-spinner {
+    display: inline-block;
+    animation: arc-spin 0.8s linear infinite;
+    color: var(--wb-orange);
+    margin-right: 4px;
+  }
+
+  /* Compression ratio badge inside archives */
+  .arc-file-row .tc-badge span {
+    border-color: rgba(255,136,0,0.3);
+    color: rgba(255,180,60,0.8);
+  }
+
   /* ── CENTER: MAIN VIEW ── */
   #center-panel {
     display: flex;
@@ -514,15 +614,17 @@
     outline-offset: 1px;
     z-index: 5;
   }
-  /* Checksum corruption indicator — red corner triangle */
-  .track-cell.chk-bad::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 0; height: 0;
-    border-style: solid;
-    border-width: 0 5px 5px 0;
-    border-color: transparent var(--wb-red) transparent transparent;
+  /* Checksum corruption indicator — red border frame */
+  .track-cell.chk-bad {
+    outline: 2px solid var(--wb-red) !important;
+    outline-offset: 0px;
+    z-index: 3;
+    box-shadow: 0 0 5px rgba(255,50,50,0.6), inset 0 0 0 1px rgba(255,50,50,0.4);
+    animation: defectPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes defectPulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(255,50,50,0.6), inset 0 0 0 1px rgba(255,50,50,0.4); }
+    50%       { box-shadow: 0 0 10px rgba(255,50,50,0.9), inset 0 0 0 1px rgba(255,100,100,0.7); }
   }
   /* Chain member highlight */
   .track-cell.chain-member {
@@ -1604,6 +1706,63 @@
   .fc-badge.bin  { border-color: var(--wb-blue);   color: #88aaff;          background: rgba(0,85,170,0.1); }
 
   
+/* ── File Content: Play / Export buttons in header ── */
+  .fc-play-btn {
+    font-family: var(--font-title);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--wb-green);
+    color: var(--wb-green);
+    border-radius: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+  .fc-play-btn:hover {
+    background: var(--wb-green);
+    color: #000;
+    box-shadow: 0 0 10px rgba(0,255,136,0.3);
+  }
+  .fc-play-btn.playing {
+    background: rgba(255,136,0,0.12);
+    border-color: var(--wb-orange);
+    color: var(--wb-orange);
+  }
+  .fc-play-btn.playing:hover {
+    background: var(--wb-orange);
+    color: #000;
+    box-shadow: 0 0 10px rgba(255,136,0,0.3);
+  }
+  .fc-export-btn {
+    font-family: var(--font-title);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--wb-blue);
+    color: #88aaff;
+    border-radius: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+  .fc-export-btn:hover {
+    background: var(--wb-blue);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0,85,170,0.4);
+  }
+  .fc-export-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    box-shadow: none;
+  }
+
 /* Binary viewer mode toggles */
 .fc-badge.fc-bin-toggle{cursor:pointer;user-select:none;}
 .fc-badge.fc-bin-toggle:hover{background:rgba(0,85,170,0.18);border-color:var(--wb-blue);color:var(--wb-text);}

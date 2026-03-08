@@ -521,6 +521,423 @@ function safeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  AMIGA VIRUS DETECTION ENGINE
+//  Sources: VHT-DK Amiga Virus Encyclopedia, Hamburg Virus Test Center,
+//           personal knowledge of 68000 boot block structures.
+// ════════════════════════════════════════════════════════════════════════════
+
+const VIRUS_DB = {
+  // ── Boot Block Viruses (checked against sectors 0+1) ─────────────────────
+  bootBlock: [
+    {
+      name: 'SCA Virus',
+      alias: 'Swiss Cracking Association',
+      year: 1987,
+      danger: 'low',
+      type: 'Boot Block',
+      desc: 'First Amiga virus. Spreads to any writable disk. Every 15th boot shows message. Destroys custom bootblocks.',
+      strings: ['Something wonderful has happened','Your AMIGA is alive','Mega-Mighty SCA'],
+      // SCA signature: specific word at boot+12 (after DOS header)
+      patterns: [ { offset: 12, bytes: [0x43,0xFA] } ]
+    },
+    {
+      name: 'Byte Bandit',
+      alias: 'Byte Bandit v1',
+      year: 1988,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Spread-only, not destructive. Hooks system and remains reset-resident. Counts copies written.',
+      strings: ['Virus by Byte Bandit','Number of copys'],
+      patterns: [ { offset: 0x0C, bytes: [0x4A,0xFC] } ]
+    },
+    {
+      name: 'Byte Bandit II',
+      alias: 'Byte Bandit v2',
+      year: 1988,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Variant of Byte Bandit with slightly modified code.',
+      strings: ['Byte Bandit'],
+      patterns: []
+    },
+    {
+      name: 'Lamer Exterminator',
+      alias: 'Lamer-1',
+      year: 1989,
+      danger: 'high',
+      type: 'Boot Block',
+      desc: 'DESTRUCTIVE. First defensive virus. Randomly overwrites file data. Multiple variants exist.',
+      strings: ['LAMER EXTERMINATOR','Lamer Exterminator','lamers'],
+      patterns: [ { offset: 12, bytes: [0x60,0x00] } ]
+    },
+    {
+      name: 'Lamer Exterminator II',
+      alias: 'Lamer-2',
+      year: 1989,
+      danger: 'high',
+      type: 'Boot Block',
+      desc: 'DESTRUCTIVE. Second variant. More aggressive file destruction. Very widespread.',
+      strings: ['LAMER','Exterminator'],
+      patterns: [ { offset: 16, bytes: [0x4E,0x71,0x4E,0x71] } ]
+    },
+    {
+      name: 'SADDAM Boot Virus',
+      alias: 'Saddam Hussein Virus',
+      year: 1991,
+      danger: 'critical',
+      type: 'Boot Block',
+      desc: 'CRITICAL / DESTRUCTIVE. Overwrites random disk sectors. Appeared during Gulf War 1991.',
+      strings: ['SADDAM','Saddam'],
+      patterns: [ { offset: 12, bytes: [0x48,0xE7] } ]
+    },
+    {
+      name: 'IRQ Virus',
+      alias: 'IRQ-1',
+      year: 1989,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Hooks interrupt vectors. Spreads via disk swapping. Non-destructive spreader.',
+      strings: ['IRQ'],
+      patterns: [ { offset: 20, bytes: [0x70,0x01,0x22,0x78] } ]
+    },
+    {
+      name: 'North Star Virus',
+      alias: 'NorthStar',
+      year: 1989,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Hooks ColdCapture vector. Spreads silently. Shows star animation on infection.',
+      strings: ['North Star','NorthStar','NORTH STAR'],
+      patterns: [ { offset: 12, bytes: [0x48,0xE7,0xFF,0xFE] } ]
+    },
+    {
+      name: 'AEK Virus',
+      alias: 'AEK-1',
+      year: 1990,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Spreads via boot block. Stays reset-resident using CoolCapture vector.',
+      strings: ['AEK'],
+      patterns: []
+    },
+    {
+      name: 'BGS9 / Terrorists Virus',
+      alias: 'Terrorists TTV1',
+      year: 1988,
+      danger: 'low',
+      type: 'File + Boot Block',
+      desc: 'First file virus for Amiga. Not destructive. Self-spreading executable. By "The Terrorists" demo group.',
+      strings: ['BGS9','Terrorists','TERRORISTS','The names have been changed'],
+      patterns: []
+    },
+    {
+      name: 'Bob Virus',
+      alias: 'Bob-1',
+      year: 1990,
+      danger: 'low',
+      type: 'Boot Block',
+      desc: 'Harmless spreader. Named after Bob the Amiga mascot. Shows greetings on screen.',
+      strings: ['Bob Virus','BOB VIRUS'],
+      patterns: []
+    },
+    {
+      name: 'Rob Virus',
+      alias: 'Rob-1',
+      year: 1990,
+      danger: 'low',
+      type: 'Boot Block',
+      desc: 'Variant of Bob Virus. Harmless spreader.',
+      strings: ['Rob Virus','ROB VIRUS'],
+      patterns: []
+    },
+    {
+      name: 'Gary Virus',
+      alias: 'Gary-1',
+      year: 1990,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Modifies trackdisk device. Spreads to inserted disks.',
+      strings: ['Gary Virus','GARY VIRUS','Gary'],
+      patterns: []
+    },
+    {
+      name: 'Plastik Virus',
+      alias: 'Plastik-1',
+      year: 1990,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Boot block virus. Spreads silently. Overrides trackdisk interrupts.',
+      strings: ['Plastik','PLASTIK'],
+      patterns: []
+    },
+    {
+      name: 'Revenge of LAMER',
+      alias: 'LAMER-Revenge',
+      year: 1990,
+      danger: 'high',
+      type: 'Boot Block',
+      desc: 'Variant of Lamer Exterminator series. DESTRUCTIVE file overwriter.',
+      strings: ['Revenge of Lamer','REVENGE OF LAMER','revenge'],
+      patterns: []
+    },
+    {
+      name: 'System Z Virus',
+      alias: 'SystemZ-4.0',
+      year: 1991,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Boot block virus version 4.0. Listed in VHT-DK Encyclopedia. Spreads on disk swap.',
+      strings: ['SystemZ','System Z','SYSTEM Z'],
+      patterns: []
+    },
+    {
+      name: 'Microbe Virus',
+      alias: 'Microbe-1',
+      year: 1989,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Infects boot blocks. Hooks reset vector. Silent spreader.',
+      strings: ['Microbe','MICROBE'],
+      patterns: []
+    },
+    {
+      name: 'Doctor Virus',
+      alias: 'Doctor-1',
+      year: 1989,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Hooks DoIO to spread via trackdisk. Reset-resident.',
+      strings: ['Doctor Virus','DOCTOR VIRUS','Doctor'],
+      patterns: []
+    },
+    {
+      name: 'Xeno Virus',
+      alias: 'Xeno-1',
+      year: 1990,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Boot block spreader. Checks CRC of existing boot blocks before infecting.',
+      strings: ['Xeno','XENO'],
+      patterns: []
+    },
+    {
+      name: 'GVIRUS',
+      alias: 'G-Virus-1',
+      year: 1991,
+      danger: 'medium',
+      type: 'Boot Block',
+      desc: 'Infects by hooking trackdisk.device. Spreads silently on disk swap.',
+      strings: ['GVIRUS','G-Virus','GVirus'],
+      patterns: []
+    },
+  ],
+
+  // ── File Viruses (checked against file names + content) ──────────────────
+  fileVirus: [
+    {
+      name: 'SADDAM Disk Validator',
+      alias: 'Saddam File Virus',
+      year: 1991,
+      danger: 'critical',
+      type: 'File Virus',
+      desc: 'CRITICAL. Disguises itself as DEVS:DiskValidator. Corrupts files and causes Guru Meditations.',
+      fileNames: ['DiskValidator','diskvalidator','Disk-Validator'],
+      strings: ['BitMap Checksum Error'],
+      excludeStrings: ['in drive 00','Replace volume','is out of range','is invalid','bad extension']
+    },
+    {
+      name: 'BGS9 / Terrorists File Virus',
+      alias: 'TTV1',
+      year: 1988,
+      danger: 'low',
+      type: 'File Virus',
+      desc: 'First Amiga file virus. Attaches to executables. Not destructive.',
+      fileNames: [],
+      strings: ['BGS9','TTV1','Terrorists'],
+      excludeStrings: []
+    },
+    {
+      name: 'SADDAM-2 File Virus',
+      alias: 'Saddam-2',
+      year: 1991,
+      danger: 'critical',
+      type: 'File Virus',
+      desc: 'CRITICAL. Second SADDAM variant. Same destructive behavior as SADDAM-1.',
+      fileNames: ['DiskValidator'],
+      strings: ['BitMap Checksum Error'],
+      excludeStrings: ['in drive 00','is out of range']
+    },
+  ]
+};
+
+/**
+ * Scan the boot block (sectors 0–1, 1024 bytes) for known virus signatures.
+ * Returns array of { virus, evidence } objects.
+ */
+function detectBootViruses() {
+  if (!diskData) return [];
+  const found = [];
+  // Grab both boot sectors as a raw byte array and as a string
+  const bb = new Uint8Array(diskData, 0, Math.min(1024, diskData.byteLength));
+  const bbStr = String.fromCharCode(...bb);
+
+  for (const virus of VIRUS_DB.bootBlock) {
+    let matched = false;
+    const evidence = [];
+
+    // String matches
+    for (const s of (virus.strings || [])) {
+      if (bbStr.includes(s)) {
+        matched = true;
+        evidence.push(`String: "${s}"`);
+      }
+    }
+    // Byte patterns
+    for (const pat of (virus.patterns || [])) {
+      const off = pat.offset;
+      if (off + pat.bytes.length <= bb.length) {
+        if (pat.bytes.every((b, i) => bb[off + i] === b)) {
+          matched = true;
+          evidence.push(`Code pattern @ +0x${off.toString(16).toUpperCase()}`);
+        }
+      }
+    }
+
+    if (matched) found.push({ virus, evidence });
+  }
+  return found;
+}
+
+/**
+ * Scan all loaded files for known file virus signatures.
+ * Uses allEntries from the disk parse. Returns array of { virus, fileName, evidence }.
+ */
+function detectFileViruses(allEntries) {
+  if (!diskData || !allEntries) return [];
+  const found = [];
+
+  // Build flat file list
+  const flat = [];
+  const walk = (entries) => {
+    for (const e of entries) {
+      if (e.stType === -3) flat.push(e);  // ST_FILE
+      if (e.children) walk(e.children);
+    }
+  };
+  walk(allEntries);
+
+  for (const entry of flat) {
+    const uName = entry.name.toUpperCase();
+    for (const virus of VIRUS_DB.fileVirus) {
+      let matched = false;
+      const evidence = [];
+
+      // Name match
+      const nameMatch = (virus.fileNames || []).some(fn =>
+        entry.name === fn || uName === fn.toUpperCase()
+      );
+
+      if (nameMatch) {
+        // Read file content for deeper inspection
+        try {
+          const maxRead = Math.min(entry.size || 2048, 2048);
+          const fileData = readFileData(entry.sector, maxRead);
+          const content = String.fromCharCode(...fileData);
+
+          // Check required strings
+          let strOk = false;
+          for (const s of (virus.strings || [])) {
+            if (content.includes(s)) { strOk = true; evidence.push(`String: "${s}"`); }
+          }
+          // Check that normal DiskValidator strings are ABSENT (SADDAM replaces them)
+          const excluded = (virus.excludeStrings || []).filter(s => content.includes(s));
+          if (excluded.length > 0) strOk = false; // real file has these
+
+          if (nameMatch && strOk) { matched = true; evidence.unshift(`Filename: "${entry.name}"`); }
+          else if (nameMatch && virus.strings.length === 0) { matched = true; evidence.push(`Filename: "${entry.name}"`); }
+
+        } catch(e) {
+          if (nameMatch && virus.strings.length === 0) { matched = true; evidence.push(`Filename: "${entry.name}"`); }
+        }
+      }
+
+      // String-only match (no name required)
+      if (!matched && (virus.fileNames || []).length === 0 && (virus.strings || []).length > 0) {
+        try {
+          const maxRead = Math.min(entry.size || 0, 512);
+          if (maxRead > 0) {
+            const fileData = readFileData(entry.sector, maxRead);
+            const content = String.fromCharCode(...fileData);
+            for (const s of virus.strings) {
+              if (content.includes(s)) { matched = true; evidence.push(`String "${s}" in ${entry.name}`); }
+            }
+          }
+        } catch(e) {}
+      }
+
+      if (matched) found.push({ virus, fileName: entry.name, evidence });
+    }
+  }
+  return found;
+}
+
+/**
+ * Run full virus scan and return combined results object.
+ */
+function runVirusScan(allEntries) {
+  const bootHits = detectBootViruses();
+  const fileHits = detectFileViruses(allEntries || []);
+  const allHits  = [...bootHits.map(h=>({...h, location:'Boot Block'})),
+                    ...fileHits.map(h=>({...h, location:`File: ${h.fileName}`}))];
+  return { bootHits, fileHits, allHits, clean: allHits.length === 0 };
+}
+
+/**
+ * Render the virus scan results banner (shown inside boot block analysis).
+ */
+function renderVirusScanBanner(scan) {
+  if (scan.clean) {
+    return `<div class="analysis-section fade-in" style="border-left:3px solid var(--wb-green)">
+      <div class="analysis-title" style="color:var(--wb-green)">🛡 Virus Scan — CLEAN</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);padding:4px 0">
+        No known virus signatures detected in boot block or files.
+      </div>
+    </div>`;
+  }
+
+  const dangerColor = { low:'var(--wb-amber)', medium:'var(--wb-orange)', high:'var(--wb-red)', critical:'#ff2222' };
+  const dangerIcon  = { low:'⚠', medium:'⚠', high:'☣', critical:'☠' };
+
+  let html = `<div class="analysis-section fade-in virus-alert">
+    <div class="analysis-title" style="color:var(--wb-red)">☣ VIRUS DETECTED — ${scan.allHits.length} MATCH${scan.allHits.length>1?'ES':''}</div>`;
+
+  for (const hit of scan.allHits) {
+    const v = hit.virus;
+    const dc = dangerColor[v.danger] || 'var(--wb-orange)';
+    const di = dangerIcon[v.danger] || '⚠';
+    html += `
+    <div class="virus-hit" style="border-left:3px solid ${dc};margin:8px 0;padding:6px 10px;background:rgba(255,50,50,0.07);border-radius:0 3px 3px 0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:14px">${di}</span>
+        <span style="font-family:var(--font-title);font-size:11px;letter-spacing:1px;color:${dc}">${v.name}</span>
+        <span class="status-pill" style="font-size:8px;padding:2px 6px;border-color:${dc};color:${dc}">${v.danger.toUpperCase()}</span>
+        <span class="status-pill idle" style="font-size:8px;padding:2px 6px">${v.type}</span>
+        ${v.year ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--wb-dim)">${v.year}</span>` : ''}
+      </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--wb-dim);margin-bottom:3px">
+        <span style="color:var(--wb-text)">${v.desc}</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--wb-dim)">
+        📍 Location: <span style="color:var(--wb-blue)">${hit.location}</span>
+        &nbsp;·&nbsp; Evidence: <span style="color:var(--wb-amber)">${(hit.evidence||[]).join(', ')}</span>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
 function parseBootBlock() {
   const id    = String.fromCharCode(u8(0,0), u8(0,1), u8(0,2));
   const flags = u8(0, 3);
@@ -566,8 +983,8 @@ function parseBootBlock() {
   return { id, flags, fsType, checksum: stored, checksumOk, rootBlockNum, hasCode };
 }
 
-function parseRootBlock(s) {
-  if (s === undefined) s = ADF.ROOT_BLOCK;
+function parseRootBlock() {
+  const s = ADF.ROOT_BLOCK;
   const type = i32be(s, 0);
   const nameLen = u8(s, ADF.SECTOR_SIZE - 80);
   const name = readStr(s, ADF.SECTOR_SIZE - 79, nameLen);
@@ -581,7 +998,7 @@ function parseRootBlock(s) {
     if (b && b < ADF.TOTAL_SECTORS) bitmapBlocks.push(b);
   }
   const checksumOk = blockChecksum(s);
-  return { type, name, date: amigaDateToStr(days, mins, ticks), bitmapBlocks, bitmapFlag, checksumOk, sector: s };
+  return { type, name, date: amigaDateToStr(days, mins, ticks), bitmapBlocks, bitmapFlag, checksumOk };
 }
 
 function parseBitmap(bitmapBlocks) {
@@ -628,8 +1045,7 @@ function classifySectors(boot, root, bitmapFree, bitmapBlocks, allEntries) {
   const types = new Array(ADF.TOTAL_SECTORS).fill('free');
   types[0] = 'boot';
   types[1] = 'boot';
-  const rootSector = (root && root.sector !== undefined) ? root.sector : ADF.ROOT_BLOCK;
-  types[rootSector] = 'root';
+  types[ADF.ROOT_BLOCK] = 'root';
   for (const b of bitmapBlocks)
     if (b > 0 && b < ADF.TOTAL_SECTORS) types[b] = 'bitmap';
 
@@ -815,9 +1231,14 @@ function sniffFileType(sector, size) {
       if (ft==='ILBM') return { icon:'🖼️', badge:'ILBM' };
       if (ft==='ANIM') return { icon:'🎞️', badge:'ANIM' };
       if (ft==='8SVX') return { icon:'🔊', badge:'8SVX' };
+      if (ft==='ACBM') return { icon:'🖼️', badge:'ACBM' };
       if (ft==='SMUS') return { icon:'🎼', badge:'SMUS' };
+      if (ft==='CMUS') return { icon:'🎼', badge:'CMUS' };
       if (ft==='FTXT') return { icon:'📄', badge:'FTXT' };
+      if (ft==='RGBN') return { icon:'🖼️', badge:'RGBN' };
+      if (ft==='RGB8') return { icon:'🖼️', badge:'RGB8' };
       if (ft==='TDDD') return { icon:'🎨', badge:'3D'   };
+      if (ft==='DR2D') return { icon:'🎨', badge:'DR2D' };
       return { icon:'📦', badge:`IFF/${ft.trim()}` };
     }
     // ProTracker / NoiseTracker MOD
@@ -965,23 +1386,44 @@ function renderTree(entries) {
       const badgeHtml = badge ? `<span>${badge}</span>` : '';
       const dateStr = file.date ? file.date.split(' ')[0] : '';
       const protHtml = protToTreeStr(file.prot || 0);
+      const isArc = isArchiveExt(file.name);
 
-      rows += `<tr class="tree-row file"
-          onclick="selectFileSector(${file.sector});openFileContent(${file.sector},this.dataset.name,${file.size})"
-          data-name="${safeN}"
-          title="${safeN}  ${formatSize(file.size)}  ${dateStr}">
-        <td class="tc-name">
-          <div class="tree-name-inner" style="padding-left:${childIndent}px">
-            <span class="tree-spacer"></span>
-            <span class="tree-icon">${icon}</span>
-            <span class="tree-label">${safeN}</span>
-          </div>
-        </td>
-        <td class="tc-badge">${badgeHtml}</td>
-        <td class="tc-attrs">${protHtml}</td>
-        <td class="tc-date">${dateStr}</td>
-        <td class="tc-size">${formatSize(file.size)}</td>
-      </tr>`;
+      if (isArc) {
+        // Archive: chevron + toggle expander + still opens file content
+        rows += `<tr class="tree-row file arc-file-entry" id="arc-row-${file.sector}"
+            onclick="treeToggleArchive(${file.sector},${file.size},this.dataset.name,${childIndent},event)"
+            data-name="${safeN}"
+            title="${safeN}  ${formatSize(file.size)}  ${dateStr}">
+          <td class="tc-name">
+            <div class="tree-name-inner" style="padding-left:${childIndent}px">
+              <span class="tree-chevron collapsed" id="arc-chv-${file.sector}" style="pointer-events:none">▶</span>
+              <span class="tree-icon" id="arc-icon-${file.sector}">${icon}</span>
+              <span class="tree-label">${safeN}</span>
+            </div>
+          </td>
+          <td class="tc-badge">${badgeHtml}</td>
+          <td class="tc-attrs">${protHtml}</td>
+          <td class="tc-date">${dateStr}</td>
+          <td class="tc-size">${formatSize(file.size)}</td>
+        </tr>`;
+      } else {
+        rows += `<tr class="tree-row file"
+            onclick="selectFileSector(${file.sector});openFileContent(${file.sector},this.dataset.name,${file.size})"
+            data-name="${safeN}"
+            title="${safeN}  ${formatSize(file.size)}  ${dateStr}">
+          <td class="tc-name">
+            <div class="tree-name-inner" style="padding-left:${childIndent}px">
+              <span class="tree-spacer"></span>
+              <span class="tree-icon">${icon}</span>
+              <span class="tree-label">${safeN}</span>
+            </div>
+          </td>
+          <td class="tc-badge">${badgeHtml}</td>
+          <td class="tc-attrs">${protHtml}</td>
+          <td class="tc-date">${dateStr}</td>
+          <td class="tc-size">${formatSize(file.size)}</td>
+        </tr>`;
+      }
     }
 
     if (depth > 0) rows += `</tbody>`; // close tree-children tbody
@@ -1014,6 +1456,397 @@ function treeToggle(id) {
   if (chevron) chevron.classList.toggle('collapsed', collapsed);
   if (icon) icon.textContent = collapsed ? '📁' : '📂';
 }
+
+// ─── Archive expansion in tree ────────────────────────────────────────────────
+
+function isArchiveExt(name) {
+  const e = name.toLowerCase().split('.').pop();
+  return e === 'lha' || e === 'lzh' || e === 'zip';
+}
+
+// ── LHA/LZH parser ──────────────────────────────────────────────────────────
+// Returns [{name, size, compSize, method, isDir, date}] or throws.
+function parseLhaEntries(data) {
+  const v = new DataView(data.buffer !== undefined ? data.buffer : data,
+                         data.byteOffset || 0, data.byteLength || data.length);
+  const get8  = (o) => v.getUint8(o);
+  const get16 = (o) => v.getUint16(o, true);  // LE
+  const get32 = (o) => v.getUint32(o, true);  // LE
+  const str   = (o, n) => { let s=''; for(let i=0;i<n;i++) s+=String.fromCharCode(get8(o+i)); return s; };
+
+  function decodeDosDate(dt32) {
+    const t = dt32 & 0xFFFF, d = (dt32 >>> 16) & 0xFFFF;
+    const sec = (t & 0x1F) * 2, min = (t >> 5) & 0x3F, hr = (t >> 11) & 0x1F;
+    const day = d & 0x1F, mon = (d >> 5) & 0x0F, yr = ((d >> 9) & 0x7F) + 1980;
+    try { return new Date(yr, Math.max(0, mon-1), Math.max(1, day), hr, min, sec); }
+    catch(e) { return null; }
+  }
+
+  const entries = [];
+  const len = data.byteLength || data.length;
+  let pos = 0;
+
+  while (pos < len) {
+    if (pos + 2 > len) break;
+    const headerSize = get8(pos);     // level 0/1: byte count from [2] onward
+    if (headerSize === 0) break;      // end-of-archive marker
+
+    if (pos + 22 > len) break;
+    const methodStr = str(pos + 2, 5);  // e.g. '-lh5-'
+    if (methodStr[0] !== '-' || methodStr[4] !== '-') break; // not a valid header
+
+    const level = get8(pos + 20);
+    let compSize, origSize, dt, nameLen, name, extHeaderTotal = 0;
+
+    if (level === 0) {
+      compSize  = get32(pos + 7);
+      origSize  = get32(pos + 11);
+      dt        = decodeDosDate(get32(pos + 15));
+      nameLen   = get8(pos + 21);
+      name      = str(pos + 22, nameLen);
+      const totalHeader = 2 + headerSize;  // header_size counts from byte[2]
+      pos += totalHeader + compSize;
+
+    } else if (level === 1) {
+      const skipSize = get32(pos + 7);   // compressed + ext headers after fixed part
+      origSize  = get32(pos + 11);
+      dt        = decodeDosDate(get32(pos + 15));
+      nameLen   = get8(pos + 21);
+      name      = str(pos + 22, nameLen);
+      // Fixed header ends at: 2 + header_size
+      // After that: extended headers until next_size == 0
+      let extPos  = pos + 2 + headerSize;
+      let extTotal = 0;
+      while (extPos + 2 <= len) {
+        const extSize = get16(extPos);
+        if (extSize === 0) { extTotal += 2; break; }
+        // Extended header type
+        const extType = get8(extPos + 2);
+        // Type 0x01 = filename
+        if (extType === 0x01 && extSize >= 3) {
+          const fnLen = extSize - 3 - 2; // minus type byte and trailing next_size
+          if (fnLen > 0) name = str(extPos + 3, fnLen);
+        }
+        extTotal += extSize;
+        extPos   += extSize;
+      }
+      compSize = skipSize - extTotal;
+      pos = extPos + 2 + compSize; // skip past data
+
+    } else if (level === 2) {
+      // Level 2: header_size is uint16 at [0], total header = header_size
+      const totalHeader = get16(pos);
+      compSize = get32(pos + 7);
+      origSize = get32(pos + 11);
+      dt       = new Date(get32(pos + 15) * 1000); // Unix timestamp
+      // Filename comes from extended header type 0x01 after fixed 25-byte block
+      name     = '';
+      let extPos = pos + 26;  // first extended header starts at 26 (pos+24 = first next_size)
+      let nextSz = get16(pos + 24);
+      while (nextSz > 0 && extPos + nextSz <= pos + totalHeader) {
+        const extType = get8(extPos);
+        if (extType === 0x01) { // filename
+          const fnLen = nextSz - 3; // minus type(1) + next_size(2)
+          if (fnLen > 0) name = str(extPos + 1, fnLen);
+        }
+        if (extType === 0x02) { // dirname
+          const dnLen = nextSz - 3;
+          if (dnLen > 0 && !name) name = str(extPos + 1, dnLen);
+        }
+        extPos += nextSz;
+        nextSz  = extPos + 2 <= pos + totalHeader ? get16(extPos - 2) : 0;
+      }
+      if (!name) name = '(unknown)';
+      pos += totalHeader + compSize;
+
+    } else {
+      break; // unknown level — stop
+    }
+
+    // Normalise path separators (LHA may use '\' on some platforms)
+    name = name.replace(/\\/g, '/').replace(/\0/g, '');
+
+    const isDir = methodStr === '-lhd-' || name.endsWith('/');
+    const dateStr = dt ? dt.toISOString().slice(0, 10) : '';
+    entries.push({ name: name.replace(/\/$/, ''), size: origSize, compSize: compSize || 0,
+                   method: methodStr, isDir, date: dateStr });
+  }
+  return entries;
+}
+
+// ── ZIP parser ───────────────────────────────────────────────────────────────
+// Prefers central directory; falls back to local header walk.
+function parseZipEntries(data) {
+  const v = new DataView(data.buffer !== undefined ? data.buffer : data,
+                         data.byteOffset || 0, data.byteLength || data.length);
+  const len = data.byteLength || data.length;
+  const get8  = (o) => v.getUint8(o);
+  const get16 = (o) => v.getUint16(o, true);
+  const get32 = (o) => v.getUint32(o, true);
+  const str   = (o, n) => { let s=''; for(let i=0;i<n;i++) { const c=get8(o+i); s+=c<128?String.fromCharCode(c):'?'; } return s; };
+
+  function decodeDosDate(time16, date16) {
+    const sec = (time16 & 0x1F) * 2, min = (time16 >> 5) & 0x3F, hr = (time16 >> 11) & 0x1F;
+    const day = date16 & 0x1F, mon = (date16 >> 5) & 0x0F, yr = ((date16 >> 9) & 0x7F) + 1980;
+    try { return new Date(yr, Math.max(0, mon-1), Math.max(1, day), hr, min, sec); } catch(e) { return null; }
+  }
+
+  const entries = [];
+
+  // ── Try central directory first ──
+  let cdOffset = -1, cdEntries = 0;
+  // Scan backwards for EOCD signature (PK\x05\x06)
+  for (let i = Math.max(0, len - 65558); i < len - 3; i++) {
+    if (get8(i)===0x50 && get8(i+1)===0x4B && get8(i+2)===0x05 && get8(i+3)===0x06) {
+      cdEntries = get16(i + 10);
+      cdOffset  = get32(i + 16);
+      break;
+    }
+  }
+
+  if (cdOffset >= 0 && cdOffset + 46 <= len) {
+    let pos = cdOffset;
+    for (let e = 0; e < cdEntries && pos + 46 <= len; e++) {
+      if (get8(pos)!==0x50||get8(pos+1)!==0x4B||get8(pos+2)!==0x01||get8(pos+3)!==0x02) break;
+      const method  = get16(pos + 10);
+      const modTime = get16(pos + 12);
+      const modDate = get16(pos + 14);
+      const compSz  = get32(pos + 20);
+      const origSz  = get32(pos + 24);
+      const fnLen   = get16(pos + 28);
+      const exLen   = get16(pos + 30);
+      const cmLen   = get16(pos + 32);
+      const extAttr = get32(pos + 38);
+      const name    = str(pos + 46, fnLen).replace(/\\/g, '/');
+      const isDir   = name.endsWith('/') || (extAttr & 0x10); // DOS directory flag
+      const dt      = decodeDosDate(modTime, modDate);
+      const dateStr = dt ? dt.toISOString().slice(0, 10) : '';
+      const methodLabel = method === 0 ? 'store' : method === 8 ? 'deflate' : `m${method}`;
+      entries.push({ name: name.replace(/\/$/, ''), size: origSz, compSize: compSz,
+                     method: methodLabel, isDir, date: dateStr });
+      pos += 46 + fnLen + exLen + cmLen;
+    }
+    if (entries.length > 0) return entries;
+  }
+
+  // ── Fallback: walk local file headers ──
+  let pos = 0;
+  while (pos + 30 <= len) {
+    if (get8(pos)!==0x50||get8(pos+1)!==0x4B) { pos++; continue; }
+    if (get8(pos+2)!==0x03||get8(pos+3)!==0x04) { pos += 4; continue; }
+    const method  = get16(pos + 8);
+    const modTime = get16(pos + 10);
+    const modDate = get16(pos + 12);
+    let   compSz  = get32(pos + 18);
+    const origSz  = get32(pos + 22);
+    const fnLen   = get16(pos + 26);
+    const exLen   = get16(pos + 28);
+    if (fnLen === 0 || pos + 30 + fnLen > len) break;
+    const name    = str(pos + 30, fnLen).replace(/\\/g, '/');
+    const isDir   = name.endsWith('/');
+    const dt      = decodeDosDate(modTime, modDate);
+    const dateStr = dt ? dt.toISOString().slice(0, 10) : '';
+    const methodLabel = method === 0 ? 'store' : method === 8 ? 'deflate' : `m${method}`;
+    if (!isDir) entries.push({ name: name.replace(/\/$/, ''), size: origSz, compSize: compSz,
+                                method: methodLabel, isDir, date: dateStr });
+    // If sizes are zero (data descriptor follows), we can't reliably skip — stop
+    if (compSz === 0 && origSz === 0) break;
+    pos += 30 + fnLen + exLen + compSz;
+  }
+  return entries;
+}
+
+// ── Archive entry tree: flat list → nested structure ─────────────────────────
+function buildArchiveNodeTree(entries) {
+  const root = { name: '', children: [], files: [] };
+  const byPath = { '': root };
+
+  for (const e of entries) {
+    const parts  = e.name.split('/').filter(Boolean);
+    const fname  = parts.pop();
+    const dirPath = parts.join('/');
+
+    // Ensure all parent dirs exist
+    let cumPath = '';
+    for (const seg of parts) {
+      const parentPath = cumPath;
+      cumPath = cumPath ? cumPath + '/' + seg : seg;
+      if (!byPath[cumPath]) {
+        const node = { name: seg, children: [], files: [] };
+        byPath[cumPath] = node;
+        (byPath[parentPath] || root).children.push(node);
+      }
+    }
+
+    const parent = byPath[dirPath] || root;
+    if (e.isDir) {
+      const fullPath = e.name;
+      if (!byPath[fullPath]) {
+        const node = { name: fname || e.name, children: [], files: [] };
+        byPath[fullPath] = node;
+        parent.children.push(node);
+      }
+    } else if (fname) {
+      parent.files.push({ ...e, shortName: fname });
+    }
+  }
+  return root;
+}
+
+// ── Render archive entries as table rows ─────────────────────────────────────
+let _arcNodeCounter = 0;
+function renderArchiveNode(node, depth, arcSector) {
+  let rows = '';
+  const indent = depth * 16;
+  const childIndent = indent + 16;
+
+  // Sort: dirs first then files
+  const sortedDirs  = [...node.children].sort((a,b) => a.name.localeCompare(b.name));
+  const sortedFiles = [...node.files  ].sort((a,b) => a.shortName.localeCompare(b.shortName));
+
+  for (const dir of sortedDirs) {
+    const nid = `arc-dir-${arcSector}-${_arcNodeCounter++}`;
+    const hasKids = dir.children.length > 0 || dir.files.length > 0;
+    const chevron = hasKids
+      ? `<span class="tree-chevron" id="chv-${nid}" onclick="event.stopPropagation();treeToggle('${nid}')">▶</span>`
+      : `<span class="tree-spacer"></span>`;
+    const kidCount = [
+      dir.children.length ? `${dir.children.length}d` : '',
+      dir.files.length    ? `${dir.files.length}f`    : ''
+    ].filter(Boolean).join(' ');
+    // Dir header row
+    rows += `<tbody data-arc="${arcSector}">
+      <tr class="tree-row arc-dir-row" onclick="event.stopPropagation();treeToggle('${nid}')">
+        <td class="tc-name">
+          <div class="tree-name-inner" style="padding-left:${indent}px">
+            ${chevron}
+            <span class="tree-icon" id="icon-${nid}">📂</span>
+            <span class="tree-label" title="${safeHtml(dir.name)}">${safeHtml(dir.name)}</span>
+          </div>
+        </td>
+        <td class="tc-badge"></td>
+        <td class="tc-attrs"></td>
+        <td class="tc-date"></td>
+        <td class="tc-size dir-count">${kidCount}</td>
+      </tr>
+    </tbody>`;
+    rows += `<tbody class="tree-children" id="children-${nid}" data-arc="${arcSector}">`;
+    rows += renderArchiveNode(dir, depth + 1, arcSector);
+    rows += `</tbody>`;
+  }
+
+  for (const f of sortedFiles) {
+    const { icon, badge } = identifyFile(f.shortName, null, f.size);
+    const badgeHtml = badge ? `<span>${badge}</span>` : '';
+    const ratio = f.size > 0 ? Math.round((1 - f.compSize / f.size) * 100) : 0;
+    const ratioHtml = f.size > 0 && ratio > 0
+      ? `<span title="${ratio}% saved">${ratio}%</span>` : '';
+    rows += `<tr class="tree-row arc-file-row" data-arc="${arcSector}"
+        title="${safeHtml(f.shortName)}  ${formatSize(f.size)}  ${f.date}">
+      <td class="tc-name">
+        <div class="tree-name-inner" style="padding-left:${childIndent}px">
+          <span class="tree-spacer"></span>
+          <span class="tree-icon">${icon}</span>
+          <span class="tree-label">${safeHtml(f.shortName)}</span>
+        </div>
+      </td>
+      <td class="tc-badge">${badgeHtml || ratioHtml}</td>
+      <td class="tc-attrs"></td>
+      <td class="tc-date">${f.date}</td>
+      <td class="tc-size">${formatSize(f.size)}</td>
+    </tr>`;
+  }
+  return rows;
+}
+
+// ── Toggle archive expansion in the tree ─────────────────────────────────────
+const _arcExpanded = new Set(); // tracks which sectors are expanded
+
+window.treeToggleArchive = function(sector, size, name, baseIndent, ev) {
+  if (ev) ev.stopPropagation();
+
+  // Always open the file content viewer
+  selectFileSector(sector);
+  openFileContent(sector, name, size);
+
+  const arcRowEl  = document.getElementById(`arc-row-${sector}`);
+  const chevronEl = document.getElementById(`arc-chv-${sector}`);
+  const iconEl    = document.getElementById(`arc-icon-${sector}`);
+
+  // If already expanded → collapse and remove rows
+  if (_arcExpanded.has(sector)) {
+    _arcExpanded.delete(sector);
+    document.querySelectorAll(`[data-arc="${sector}"]`).forEach(el => el.remove());
+    if (chevronEl) chevronEl.classList.add('collapsed');
+    if (iconEl)    iconEl.textContent = '📦';
+    return;
+  }
+
+  // Insert loading row right after the archive row
+  const loadingRowHtml = `<tbody id="arc-loading-${sector}" data-arc="${sector}">
+    <tr class="tree-row arc-loading-row">
+      <td class="tc-name" colspan="5">
+        <div class="tree-name-inner" style="padding-left:${baseIndent + 16}px">
+          <span class="arc-spinner">⟳</span>
+          <span style="color:var(--wb-dim);font-size:10px">Reading archive…</span>
+        </div>
+      </td>
+    </tr>
+  </tbody>`;
+  if (arcRowEl) arcRowEl.closest('tbody').insertAdjacentHTML('afterend', loadingRowHtml);
+  if (chevronEl) chevronEl.classList.remove('collapsed');
+
+  // Defer the actual disk read + parse so the loading row renders first
+  setTimeout(() => {
+    const loadingEl = document.getElementById(`arc-loading-${sector}`);
+
+    let data;
+    try { data = readFileData(sector, size); } catch(e) {
+      if (loadingEl) loadingEl.remove();
+      return;
+    }
+
+    const ext = name.toLowerCase().split('.').pop();
+    let entries = [];
+    let parseErr = null;
+    try {
+      if (ext === 'lha' || ext === 'lzh') entries = parseLhaEntries(data);
+      else if (ext === 'zip')              entries = parseZipEntries(data);
+    } catch(e) {
+      parseErr = e.message || String(e);
+    }
+
+    if (loadingEl) loadingEl.remove();
+
+    if (parseErr || entries.length === 0) {
+      const errHtml = `<tbody data-arc="${sector}">
+        <tr class="tree-row arc-file-row">
+          <td class="tc-name" colspan="5">
+            <div class="tree-name-inner" style="padding-left:${baseIndent + 16}px">
+              <span style="color:var(--wb-dim);font-size:10px">
+                ${parseErr ? '⚠ ' + safeHtml(parseErr) : '(empty archive)'}
+              </span>
+            </div>
+          </td>
+        </tr>
+      </tbody>`;
+      if (arcRowEl) arcRowEl.closest('tbody').insertAdjacentHTML('afterend', errHtml);
+      return;
+    }
+
+    _arcExpanded.add(sector);
+    _arcNodeCounter = 0;
+    const tree  = buildArchiveNodeTree(entries);
+    const rowsHtml = renderArchiveNode(tree, baseIndent / 16 + 1, sector);
+
+    // Wrap in a container tbody so we can find the insertion point
+    const wrapHtml = `<tbody data-arc="${sector}" class="arc-root-marker"></tbody>${rowsHtml}`;
+    if (arcRowEl) arcRowEl.closest('tbody').insertAdjacentHTML('afterend', wrapHtml);
+
+    if (iconEl) iconEl.textContent = '🗃️';
+    if (chevronEl) chevronEl.classList.remove('collapsed');
+  }, 10);
+};
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + 'B';
@@ -1098,11 +1931,9 @@ function renderDiskMap(freeMap) {
       ${ADF.HAS_DC ? `<div class="legend-item"><span class="legend-dot" style="background:#00cccc"></span>DirCache</div>` : ''}
       <div class="legend-item"><span class="legend-dot" style="background:var(--wb-border)"></span>Free</div>
       <div class="legend-item" style="margin-left:auto">
-        <span style="position:relative;width:10px;height:10px;display:inline-block;border-radius:2px;background:rgba(0,85,170,0.4);">
-          <span style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 5px 5px 0;border-color:transparent var(--wb-red) transparent transparent"></span>
-        </span>
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(100,100,180,0.4);outline:2px solid var(--wb-red);outline-offset:0;box-shadow:0 0 4px rgba(255,50,50,0.6);"></span>
         <span style="color:${corruptCount > 0 ? 'var(--wb-red)' : 'var(--wb-dim)'}">
-          ${corruptCount > 0 ? `${corruptCount} corrupt` : 'All checksums OK'}
+          ${corruptCount > 0 ? `${corruptCount} defect block${corruptCount>1?'s':''}` : 'All checksums OK'}
         </span>
       </div>
     </div>
@@ -1119,7 +1950,7 @@ function renderDiskMap(freeMap) {
   `;
 }
 
-function renderBootAnalysis(boot, root) {
+function renderBootAnalysis(boot, root, virusScan) {
   const fsClass = (boot.id === 'DOS' || boot.id === 'PFS' || boot.id === 'PDS' || boot.id === 'SFS') ? 'highlight' : 'error';
   const spt = ADF.SECTORS_PER_TRACK;
   const mediaStr = ADF.DISK_TYPE === 'HD'
@@ -1175,12 +2006,8 @@ function renderBootAnalysis(boot, root) {
 
   const rootSection = ADF.IS_ADOS ? `
     <div class="analysis-section fade-in">
-      <div class="analysis-title">Root Block (Sector ${root.sector !== undefined ? root.sector : ADF.ROOT_BLOCK}${root.sector !== undefined && root.sector !== ADF.ROOT_BLOCK ? ` <span style="color:var(--wb-orange);font-size:9px">FALLBACK</span>` : ''})</div>
+      <div class="analysis-title">Root Block (Sector ${ADF.ROOT_BLOCK})</div>
       <div class="kv-grid">
-        ${boot.rootBlockFallbackReason ? `
-        <div class="kv-key">⚠ Note</div>
-        <div class="kv-val warn" style="font-size:10px">${boot.rootBlockFallbackReason}</div>
-        ` : ''}
         <div class="kv-key">Volume Name</div>
         <div class="kv-val highlight">${root.name || '(unnamed)'}</div>
         <div class="kv-key">Last Modified</div>
@@ -1225,28 +2052,7 @@ function renderBootAnalysis(boot, root) {
           </span>
         </div>
         <div class="kv-key">Root Block Ptr</div>
-        ${(() => {
-          const ptr     = boot.rootBlockNum;
-          const defBlk  = ADF.ROOT_BLOCK;
-          const fallback = boot.rootBlockFallback;
-          const reason   = boot.rootBlockFallbackReason;
-          if (!ADF.IS_ADOS) {
-            return `<div class="kv-val info">Sector ${ptr} (expected ${defBlk})</div>`;
-          }
-          if (ptr === 0 || ptr >= ADF.TOTAL_SECTORS) {
-            return `<div class="kv-val error">
-              <span class="checksum-badge fail">⚠ INVALID (${ptr})</span>
-              &nbsp;Using default: sector ${defBlk}
-            </div>`;
-          }
-          if (ptr !== defBlk) {
-            return `<div class="kv-val warn">
-              Sector ${ptr} <span class="checksum-badge fail">⚠ NON-STANDARD</span>
-              &nbsp;Expected ${defBlk}
-            </div>`;
-          }
-          return `<div class="kv-val info">Sector ${ptr} <span class="checksum-badge ok">✓ OK</span></div>`;
-        })()}
+        <div class="kv-val info">Sector ${boot.rootBlockNum} (expected ${ADF.ROOT_BLOCK})</div>
         <div class="kv-key">Executable Code</div>
         <div class="kv-val ${boot.hasCode ? 'highlight' : 'warn'}">${boot.hasCode ? 'YES — Bootable disk' : 'NO — Non-bootable'}</div>
         <div class="kv-key">Filesystem</div>
@@ -1256,6 +2062,8 @@ function renderBootAnalysis(boot, root) {
     </div>
 
     ${rootSection}
+
+    ${virusScan ? renderVirusScanBanner(virusScan) : ''}
 
     <div class="analysis-section fade-in">
       <div class="analysis-title">Disk Format Summary</div>
@@ -1576,15 +2384,7 @@ function renderBlockInspector(info) {
   } else if (info.kind === 'boot') {
     html += field(0, 'Disk ID', `"${info.id}" + 0x${info.flags.toString(16).padStart(2,'0')}`, 'name');
     html += field(4, 'Checksum', `0x${info.checksum.toString(16).toUpperCase().padStart(8,'0')}`);
-    const rp = info.rootPtr;
-    const rpValid = rp > 1 && rp < ADF.TOTAL_SECTORS;
-    const rpMatch = rp === ADF.ROOT_BLOCK;
-    html += field(8, 'Root block ptr',
-      rpValid
-        ? `${rp}${rpMatch ? '' : ` <span style="color:var(--wb-orange)">≠ expected ${ADF.ROOT_BLOCK}</span>`}`
-        : `${rp} <span style="color:var(--wb-red)">INVALID — fallback: ${ADF.ROOT_BLOCK}</span>`,
-      rpValid && rpMatch ? 'ok' : rpValid ? 'warn' : 'err'
-    );
+    html += field(8, 'Root block ptr', info.rootPtr, info.rootPtr === ADF.ROOT_BLOCK ? 'ok' : 'warn');
 
   } else if (info.kind === 'bitmap') {
     html += field(0, 'Block checksum', `0x${u32be(s,0).toString(16).toUpperCase().padStart(8,'0')}`, chkOk ? 'ok' : 'err');
@@ -1795,40 +2595,35 @@ async function loadADF(file) {
 
   barEl.style.width = '60%';
 
+  // ── Reset UI to Boot Block tab on new disk load ──────────────────────────────
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const bootTab = document.querySelector('[data-tab="bootblock"]');
+  if (bootTab) bootTab.classList.add('active');
+  ['bootblock','bootcode','bitmaphex','filecontent'].forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if (el) el.style.display = t === 'bootblock' ? 'flex' : 'none';
+  });
+  document.getElementById('hex-controls').style.display = 'none';
+  // Clear file content view
+  const fcDisp = document.getElementById('file-content-display');
+  if (fcDisp) fcDisp.innerHTML = `<div class="fc-empty" style="opacity:0.3">
+    <div class="fc-empty-icon">📄</div>
+    <div class="fc-empty-text">CLICK OPEN ON A FILE</div>
+  </div>`;
+  // Clear any file info panel
+  const fiEl = document.getElementById('file-info-container');
+  if (fiEl) { fiEl.style.display = 'none'; fiEl.innerHTML = ''; }
+
   // ── 2. Parse — branch on filesystem family ───────────────────────────────────
   let boot, root, bitmapFree, allEntries;
   try {
     boot = parseBootBlock();
 
     if (ADF.IS_ADOS) {
-      // ── Resolve root block: use boot pointer if valid, else fall back to default ──
-      const defaultRoot = ADF.ROOT_BLOCK;
-      const bootPtr     = boot.rootBlockNum;
-      let resolvedRoot, rootFallback, rootFallbackReason;
-
-      if (bootPtr > 1 && bootPtr < ADF.TOTAL_SECTORS) {
-        resolvedRoot      = bootPtr;
-        rootFallback      = (bootPtr !== defaultRoot);
-        rootFallbackReason = rootFallback
-          ? `Boot block points to sector ${bootPtr} (non-standard, expected ${defaultRoot})`
-          : null;
-      } else {
-        // Pointer is 0, 1, or out of range — use the AmigaDOS default
-        resolvedRoot      = defaultRoot;
-        rootFallback      = true;
-        rootFallbackReason = bootPtr === 0
-          ? `Root block pointer is 0 — using default sector ${defaultRoot}`
-          : `Root block pointer ${bootPtr} is out of range — using default sector ${defaultRoot}`;
-        console.warn(`[ADF] ${rootFallbackReason}`);
-      }
-
-      boot.rootBlockFallback       = rootFallback;
-      boot.rootBlockFallbackReason = rootFallbackReason;
-
       // ── AmigaDOS (OFS / FFS and all variants) ────────────────────────────────
-      root       = parseRootBlock(resolvedRoot);
+      root       = parseRootBlock();
       bitmapFree = parseBitmap(root.bitmapBlocks);
-      allEntries = collectAllEntries(resolvedRoot);
+      allEntries = collectAllEntries(ADF.ROOT_BLOCK);
       sectorTypes = classifySectors(boot, root, bitmapFree, root.bitmapBlocks, allEntries);
     } else {
       // ── PFS1/PFS2/PFS3 / SFS — graceful display ──────────────────────────────
@@ -1858,10 +2653,13 @@ async function loadADF(file) {
   // ── 3. Checksums (AmigaDOS only) ─────────────────────────────────────────────
   if (ADF.IS_ADOS) computeAllChecksums();
 
+  // ── 3b. Virus scan ───────────────────────────────────────────────────────────
+  const virusScan = runVirusScan(allEntries);
+
   // ── 4. Update UI ─────────────────────────────────────────────────────────────
   document.getElementById('dropzone').classList.add('hidden');
-  document.getElementById('status-pill').className = 'status-pill loaded';
-  document.getElementById('status-pill').textContent = `● ${root.name || 'DISK'}  [${ADF.DISK_TYPE}·${ADF.FS_KIND}]`;
+  document.getElementById('status-pill').className = `status-pill ${virusScan.clean ? 'loaded' : 'virus-alert'}`;
+  document.getElementById('status-pill').textContent = `● ${root.name || 'DISK'}  [${ADF.DISK_TYPE}·${ADF.FS_KIND}]${virusScan.clean ? '' : '  ☣ VIRUS'}`;
 
   document.getElementById('tree-container').innerHTML =
     allEntries.length > 0 ? renderTree(allEntries)
@@ -1871,9 +2669,10 @@ async function loadADF(file) {
        </div>`;
 
   document.getElementById('track-map').innerHTML = renderDiskMap(bitmapFree);
-  document.getElementById('boot-analysis').innerHTML = renderBootAnalysis(boot, root);
+  document.getElementById('boot-analysis').innerHTML = renderBootAnalysis(boot, root, virusScan);
   document.getElementById('info-container').innerHTML = renderInfoPanel(boot, root, bitmapFree, allEntries);
   loadedAllEntries = allEntries;
+  _arcExpanded.clear();
   // Clear any previous file info selection
   const fileInfoEl = document.getElementById('file-info-container');
   if (fileInfoEl) { fileInfoEl.style.display = 'none'; fileInfoEl.innerHTML = ''; }
@@ -2790,8 +3589,10 @@ function openFileContent(sector, name, size) {
   _fcSavedBodyNodes = null;
   window._fcCurrentHeaderSector = sector;
   if (!diskData) return;
-  // Stop any playing MOD
+  // Stop any active playback
   if (modPlayerState) { modPlayerState.stop(); modPlayerState = null; }
+  if (typeof fcSvxStop === 'function') fcSvxStop();
+  if (window._fcAnim) { clearTimeout(window._fcAnim.timer); window._fcAnim = null; }
 
   switchToFileContent();
   selectFileSector(sector);             // highlight chain in bitmap
@@ -2803,14 +3604,14 @@ function openFileContent(sector, name, size) {
   setTimeout(() => {
     try {
       const data = readFileData(sector, size);
-      renderFileContent(display, name, size, data);
+      renderFileContent(display, name, size, data, sector);
     } catch(err) {
       display.innerHTML = fcError(name, size, `Read error: ${safeHtml(String(err.message||err))}`);
     }
   }, 0);
 }
 
-function renderFileContent(display, name, size, data) {
+function renderFileContent(display, name, size, data, sector) {
   _fcBinState = null;
   const ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const sizeStr = formatSize(size);
@@ -2837,20 +3638,14 @@ function renderFileContent(display, name, size, data) {
   if (isIFF) {
     const topChunks = parseIFF(data);
     const formType  = topChunks[0]?.subType || '????';
-
-    if (formType === 'ILBM') {
-      renderILBMContent(display, name, sizeStr, data, topChunks);
-      return;
-    }
-    if (formType === 'ANIM') {
-      renderANIMContent(display, name, sizeStr, data, topChunks);
-      return;
-    }
-    if (formType === '8SVX') {
-      render8SVXContent(display, name, sizeStr, data, topChunks);
-      return;
-    }
-    // Generic IFF — show chunk tree
+    if (formType === 'ILBM') { renderILBMContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'ANIM') { renderANIMContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === '8SVX') { render8SVXContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'ACBM') { renderACBMContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'FTXT') { renderFTXTContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'SMUS' || formType === 'CMUS') { renderSMUSContent(display, name, sizeStr, data, topChunks, formType); return; }
+    if (formType === 'RGBN' || formType === 'RGB8') { renderRGBNContent(display, name, sizeStr, data, topChunks, formType); return; }
+    // Generic IFF — chunk tree + metadata
     renderGenericIFF(display, name, sizeStr, data, topChunks, formType);
     return;
   }
@@ -2858,6 +3653,12 @@ function renderFileContent(display, name, size, data) {
   // ── Tracker MOD? ────────────────────────────────
   if (isModFile(data, name, size)) {
     renderModContent(display, name, sizeStr, data);
+    return;
+  }
+
+  // ── Amiga Disk Font? ──────────────────────────────
+  if (isAmigaFont(data, name)) {
+    renderFontContent(display, name, sizeStr, data, sector);
     return;
   }
 
@@ -2873,15 +3674,16 @@ function renderFileContent(display, name, size, data) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fcHeader(name, typeLabel, sizeStr, badgeClass) {
+function fcHeader(name, typeLabel, sizeStr, badgeClass, extraBtns) {
   const hasHeader = window._fcCurrentHeaderSector != null && diskData && diskView && ADF.IS_ADOS;
   const hdrBtn = hasHeader
     ? `<span class="fc-badge fc-bin-toggle" id="fc-global-header-toggle" onclick="fcToggleHeaderView()">HEADER</span>`
     : '';
   return `<div class="fc-header">
     <span class="fc-filename" title="${safeHtml(name)}">${safeHtml(name)}</span>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       ${hdrBtn}
+      ${extraBtns || ''}
       <span class="fc-badge ${badgeClass||''}">${typeLabel}</span>
     </div>
     <span class="fc-badge">${sizeStr}</span>
@@ -3129,6 +3931,10 @@ function renderFileContentInner(display, name, size, data) {
       render8SVXContent(display, name, sizeStr, data, topChunks);
       return;
     }
+    if (formType === 'ACBM') { renderACBMContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'FTXT') { renderFTXTContent(display, name, sizeStr, data, topChunks); return; }
+    if (formType === 'SMUS' || formType === 'CMUS') { renderSMUSContent(display, name, sizeStr, data, topChunks, formType); return; }
+    if (formType === 'RGBN' || formType === 'RGB8') { renderRGBNContent(display, name, sizeStr, data, topChunks, formType); return; }
     renderGenericIFF(display, name, sizeStr, data, topChunks, formType);
     return;
   }
@@ -3136,6 +3942,12 @@ function renderFileContentInner(display, name, size, data) {
   // Tracker MOD?
   if (isModFile(data, name, size)) {
     renderModContent(display, name, sizeStr, data);
+    return;
+  }
+
+  // Amiga Disk Font?
+  if (isAmigaFont(data, name)) {
+    renderFontContent(display, name, sizeStr, data, null);
     return;
   }
 
@@ -3199,6 +4011,593 @@ function renderILBMContentInner(display, name, sizeStr, data, topChunks) {
   fcApplyZoom();
 
   activateFCPropsTab('bmhd');
+}
+
+// ── AMIGA DISK FONT ──────────────────────────────────────────────────────────
+//
+// Amiga font layout on disk:
+//   FONTS:Topaz.font          ← tiny descriptor (points to size directory)
+//   FONTS:Topaz/8             ← AmigaOS hunk with DiskFontHeader + TextFont + bitmap
+//   FONTS:Topaz/11            ← another size
+//
+// DiskFontHeader (62 bytes, at hunk data start H):
+//   H+00  ln_Succ (ptr)          H+04  ln_Pred (ptr)
+//   H+08  ln_Type (byte)         H+09  ln_Pri (byte)
+//   H+0A  ln_Name (ptr → dfh_Name)
+//   H+0E  mn_ReplyPort (ptr)     H+12  mn_Length (word)
+//   H+14  dfh_FileID = 0x0F00 (word)
+//   H+16  dfh_Revision (long)    H+1A  dfh_Segment (ptr)
+//   H+1E  dfh_Name[32]           (null-terminated font name)
+//
+// TextFont (52 bytes starting at H+62):
+//   +0x00  tf_Message.mn_Length  +0x10  tf_YSize (word)
+//   +0x12  tf_Style (byte)       +0x13  tf_Flags (byte)
+//   +0x14  tf_XSize (word)       +0x16  tf_Baseline (word)
+//   +0x18  tf_BoldSmear (word)   +0x1A  tf_Accessors (word)
+//   +0x1C  tf_LoChar (byte)      +0x1D  tf_HiChar (byte)
+//   +0x1E  tf_CharData (ptr)     +0x22  tf_Modulo (word)
+//   +0x24  tf_CharLoc  (ptr)     +0x28  tf_CharSpace (ptr)
+//   +0x2C  tf_CharKern (ptr)
+
+function isAmigaFont(data, name) {
+  const nameLow = name.toLowerCase();
+  const ext = nameLow.includes('.') ? nameLow.split('.').pop() : '';
+  if (ext === 'font') return true;
+  // Bitmap size file: hunk executable with DFH_ID 0x0F00
+  if (data.length >= 0x50) {
+    const isHunk = data[0] === 0 && data[1] === 0 && data[2] === 0x03 && data[3] === 0xF3;
+    if (isHunk) {
+      // Scan for 0x0F00 signature in first 256 bytes (dfh_FileID)
+      for (let off = 0x14; off < Math.min(data.length - 2, 0x80); off += 2) {
+        if (data[off] === 0x0F && data[off + 1] === 0x00) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function parseDiskFont(data) {
+  // ── Descriptor (.font file, typically < 300 bytes, not a hunk) ──
+  const isHunk = data.length >= 4 && data[0] === 0 && data[1] === 0 && data[2] === 0x03 && data[3] === 0xF3;
+  if (!isHunk) {
+    let fontName = '';
+    // Try various offsets for the name string
+    for (let start = 0; start < Math.min(data.length, 80); start++) {
+      if (data[start] >= 0x20 && data[start] < 0x7F) {
+        let s = '';
+        for (let i = start; i < Math.min(data.length, start + 48); i++) {
+          if (data[i] === 0) break;
+          if (data[i] >= 0x20 && data[i] < 0x7F) s += String.fromCharCode(data[i]);
+          else break;
+        }
+        if (s.length >= 2) { fontName = s; break; }
+      }
+    }
+    return { isDescriptor: true, fontName };
+  }
+
+  // ── Bitmap font (AmigaOS hunk executable) ──
+  // Parse hunk header: HUNK_HEADER(4) + libs(4) + numHunks(4) + first(4) + last(4) + sizes[](4)
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let pos = 4;
+  if (pos + 12 > data.byteLength) return null;
+  const libs     = dv.getUint32(pos, false); pos += 4; // usually 0
+  const numHunks = dv.getUint32(pos, false); pos += 4;
+  const firstH   = dv.getUint32(pos, false); pos += 4;
+  const lastH    = dv.getUint32(pos, false); pos += 4;
+  const hunkCount = lastH - firstH + 1;
+  if (hunkCount < 1 || hunkCount > 16 || pos + hunkCount * 4 > data.byteLength) return null;
+  pos += hunkCount * 4; // skip hunk sizes
+
+  // Now we should be at the first HUNK_CODE (0x3E9) or HUNK_DATA (0x3EA)
+  if (pos + 8 > data.byteLength) return null;
+  const hunkType = dv.getUint32(pos, false) & 0x3FFFFFFF; pos += 4;
+  if (hunkType !== 0x3E9 && hunkType !== 0x3EA) {
+    // Fallback: scan for 0x0F00 in first 512 bytes
+    for (let off = 0x14; off < Math.min(data.length - 2, 0x100); off += 2) {
+      if (data[off] === 0x0F && data[off + 1] === 0x00) {
+        return parseDiskFontAtH(data, off - 0x14);
+      }
+    }
+    return null;
+  }
+  const hunkDataWords = dv.getUint32(pos, false); pos += 4;
+  // H = pos = start of DiskFontHeader data
+  const H = pos;
+  return parseDiskFontAtH(data, H);
+}
+
+function parseDiskFontAtH(data, H) {
+  if (H + 120 > data.length) return null;
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  const dfhId = (data[H + 0x14] << 8) | data[H + 0x15];
+  if (dfhId !== 0x0F00) return null;
+
+  // Font name at H+0x1E
+  let fontName = '';
+  for (let i = H + 0x1E; i < Math.min(data.length, H + 0x1E + 32); i++) {
+    if (data[i] === 0) break;
+    if (data[i] >= 0x20 && data[i] < 0x7F) fontName += String.fromCharCode(data[i]);
+  }
+
+  // TextFont at H+62
+  const TF = H + 62;
+  if (TF + 0x30 > data.length) return null;
+  const r16  = (o) => dv.getUint16(TF + o, false);
+  const r32s = (o) => dv.getInt32(TF + o, false);
+
+  // TextFont offsets (from RKM Amiga ROM Kernel Reference):
+  // tf_Message starts at TF+0 (12 bytes MN struct)
+  // tf_YSize  at TF+0x14 (word)   tf_Style at TF+0x16 (byte)   tf_Flags at TF+0x17 (byte)
+  // Wait - actual struct: struct TextFont { struct Message tf_Message; ... }
+  // Message = 20 bytes, then:
+  // +0x14: UWORD tf_YSize
+  // +0x16: UBYTE tf_Style, +0x17 UBYTE tf_Flags
+  // +0x18: UWORD tf_XSize
+  // +0x1A: UWORD tf_Baseline
+  // +0x1C: UWORD tf_BoldSmear
+  // +0x1E: UWORD tf_Accessors
+  // +0x20: UBYTE tf_LoChar
+  // +0x21: UBYTE tf_HiChar
+  // +0x22: APTR  tf_CharData   (4 bytes)
+  // +0x26: UWORD tf_Modulo
+  // +0x28: APTR  tf_CharLoc    (4 bytes)
+  // +0x2C: APTR  tf_CharSpace  (4 bytes)
+  // +0x30: APTR  tf_CharKern   (4 bytes)
+
+  const ySize    = r16(0x14);
+  const style    = data[TF + 0x16];
+  const flags    = data[TF + 0x17];
+  const xSize    = r16(0x18);
+  const baseline = r16(0x1A);
+  const loChar   = data[TF + 0x20];
+  const hiChar   = data[TF + 0x21];
+  const ptCharData  = r32s(0x22);
+  const modulo      = r16(0x26);
+  const ptCharLoc   = r32s(0x28);
+  const ptCharSpace = r32s(0x2C);
+
+  if (ySize < 1 || ySize > 256 || xSize > 256 || modulo < 1 || modulo > 512) return null;
+
+  // Convert runtime pointers to file offsets using ln_Name anchor:
+  // ln_Name (at H+0x0A, 4-byte pointer) holds the runtime address of dfh_Name (at H+0x1E in the file)
+  const lnNameVal  = dv.getInt32(H + 0x0A, false);
+  const lnNameFile = H + 0x1E;
+  const ptrToFile  = (ptr) => ptr - lnNameVal + lnNameFile;
+
+  let charLocOff  = ptrToFile(ptCharLoc);
+  let charDataOff = ptrToFile(ptCharData);
+
+  // Sanity check + layout fallback
+  const numChars     = hiChar - loChar + 2;  // includes 1 sentinel at the end
+  const charLocSize  = numChars * 4;
+  const bitmapSize   = modulo * ySize;
+  const afterHeaders = TF + 0x34;  // end of TextFont struct
+
+  if (charLocOff < H || charLocOff + charLocSize > data.length) {
+    charLocOff  = afterHeaders;
+    charDataOff = afterHeaders + charLocSize;
+  }
+  if (charDataOff < H || charDataOff + bitmapSize > data.length) {
+    charDataOff = charLocOff + charLocSize;
+  }
+  // Final validation
+  if (charLocOff + charLocSize > data.length || charDataOff + bitmapSize > data.length) {
+    return null;
+  }
+
+  // Parse CharLoc table [bitOffset:word | charWidth:word] per glyph
+  const charLoc = [];
+  for (let i = 0; i < numChars; i++) {
+    const base = charLocOff + i * 4;
+    charLoc.push({
+      bitOff: (data[base] << 8) | data[base + 1],
+      cw:     (data[base + 2] << 8) | data[base + 3]
+    });
+  }
+
+  return { isDescriptor: false, fontName, ySize, xSize, baseline, style, flags,
+           loChar, hiChar, modulo, numChars, charLoc, charDataOff, bitmapSize };
+}
+
+// Draw a pangram using an Amiga disk font onto a canvas context.
+// Returns the total rendered height.
+function drawPangram(ctx, font, pangram, startX, startY, fgColor, bgColor, scale) {
+  const { ySize, xSize, baseline, loChar, hiChar, modulo, charLoc, charDataOff, numChars } = font;
+  const data = font._data;
+  const lineSpacing = Math.floor(ySize * scale * 1.3);
+  const canvasW = ctx.canvas.width;
+  const maxW = canvasW - startX * 2;
+
+  // Word-wrap the pangram
+  const words = pangram.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  function glyphWidth(ch) {
+    const ci = ch - loChar;
+    if (ci < 0 || ci >= numChars - 1) return 0;
+    return (charLoc[ci]?.cw || 0) * scale;
+  }
+  function measureStr(str) {
+    let w = 0;
+    for (let i = 0; i < str.length; i++) w += glyphWidth(str.charCodeAt(i));
+    return w;
+  }
+  function spaceW() { return glyphWidth(0x20) || Math.ceil(xSize * scale / 2); }
+
+  for (const word of words) {
+    const test = currentLine ? currentLine + ' ' + word : word;
+    if (currentLine && measureStr(test) > maxW) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = test;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  let y = startY;
+  for (const line of lines) {
+    let x = startX;
+    for (let ci = 0; ci < line.length; ci++) {
+      const ch = line.charCodeAt(ci);
+      const gi = ch - loChar;
+      if (gi < 0 || gi >= numChars - 1) { x += spaceW(); continue; }
+      const loc = charLoc[gi];
+      if (!loc || loc.cw === 0) { x += Math.ceil(xSize * scale / 2); continue; }
+
+      // Draw glyph pixels
+      for (let row = 0; row < ySize; row++) {
+        for (let col = 0; col < loc.cw; col++) {
+          const bitPos = loc.bitOff + col;
+          const byteOff = charDataOff + row * modulo + (bitPos >> 3);
+          if (byteOff >= data.length) continue;
+          const bit = (data[byteOff] >> (7 - (bitPos & 7))) & 1;
+          if (bit) {
+            ctx.fillStyle = fgColor;
+            ctx.fillRect(x + col * scale, y + row * scale, scale, scale);
+          }
+        }
+      }
+      x += loc.cw * scale;
+    }
+    y += lineSpacing;
+  }
+  return y - startY;
+}
+
+// Build a canvas showing the glyph atlas for one font size
+function buildGlyphAtlas(ctx, font, offsetY, scale) {
+  const { ySize, xSize, loChar, hiChar, modulo, charLoc, charDataOff, numChars, baseline } = font;
+  const data = font._data;
+  const COLS = 16;
+  const PAD  = 2;
+  const cellW = (xSize + PAD * 2) * scale;
+  const cellH = (ySize + PAD * 2) * scale + 10; // 10px for label
+  const atlasCols = Math.min(COLS, numChars - 1);
+
+  for (let ci = 0; ci < numChars - 1; ci++) {
+    const ch = loChar + ci;
+    const loc = charLoc[ci];
+    if (!loc) continue;
+    const col = ci % COLS;
+    const row = Math.floor(ci / COLS);
+    const cx = col * cellW;
+    const cy = offsetY + row * cellH;
+
+    // Cell bg
+    ctx.fillStyle = '#111133';
+    ctx.fillRect(cx, cy, cellW, (ySize + PAD * 2) * scale);
+    // Baseline guide
+    if (baseline < ySize) {
+      ctx.fillStyle = 'rgba(255,136,0,0.18)';
+      ctx.fillRect(cx, cy + (PAD + baseline) * scale, cellW, scale);
+    }
+    // Glyph pixels
+    for (let y = 0; y < ySize && loc.cw > 0; y++) {
+      for (let x = 0; x < loc.cw; x++) {
+        const bitPos = loc.bitOff + x;
+        const byteOff = charDataOff + y * modulo + (bitPos >> 3);
+        if (byteOff >= data.length) continue;
+        if ((data[byteOff] >> (7 - (bitPos & 7))) & 1) {
+          ctx.fillStyle = '#44bbff';
+          ctx.fillRect(cx + (PAD + x) * scale, cy + (PAD + y) * scale, scale, scale);
+        }
+      }
+    }
+    // Char label
+    ctx.fillStyle = '#1a2244';
+    ctx.fillRect(cx, cy + (ySize + PAD * 2) * scale, cellW, 10);
+    ctx.fillStyle = ch >= 0x20 && ch < 0x7F ? '#6699bb' : '#334455';
+    ctx.font = '7px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      ch >= 0x20 && ch < 0x7F ? String.fromCharCode(ch) : '·',
+      cx + cellW / 2,
+      cy + (ySize + PAD * 2) * scale + 5
+    );
+  }
+  const rows = Math.ceil((numChars - 1) / COLS);
+  return rows * cellH;
+}
+
+// Main font renderer — handles both .font descriptors and bitmap size files
+function renderFontContent(display, name, sizeStr, data, sector) {
+  const PANGRAM = 'The quick brown fox jumps over the lazy dog.';
+
+  // ── Find sibling font size files using loadedAllEntries ──
+  function findSiblingFonts(currentSector) {
+    if (!loadedAllEntries || loadedAllEntries.length === 0) return [];
+    const entry = loadedAllEntries.find(e => e.sector === currentSector);
+    if (!entry) return [];
+    const entryPath  = entry.path;                                    // e.g. "/FONTS/Topaz.font" or "/FONTS/Topaz/8"
+    const parentPath = entryPath.substring(0, entryPath.lastIndexOf('/'));  // e.g. "/FONTS"
+    const nameLow    = entry.name.toLowerCase();
+    const ext        = nameLow.includes('.') ? nameLow.split('.').pop() : '';
+
+    let siblings = [];
+    if (ext === 'font') {
+      // .font descriptor: look for a directory named the same stem, then numeric files inside
+      const stem = entry.name.slice(0, entry.name.lastIndexOf('.'));    // "Topaz"
+      const stemLow = stem.toLowerCase();
+      // The size dir is a sibling directory: parentPath + "/" + stem
+      const sizeDirPath = parentPath + '/' + stem;
+      siblings = loadedAllEntries.filter(e => {
+        if (e.stType !== -3) return false;
+        const ePath = e.path;
+        const eParent = ePath.substring(0, ePath.lastIndexOf('/'));
+        // Direct child of Topaz/ dir and name is numeric
+        return eParent.toLowerCase() === sizeDirPath.toLowerCase() && /^\d+$/.test(e.name);
+      });
+    } else if (/^\d+$/.test(entry.name)) {
+      // Numeric name like "8" — we're inside a font size directory
+      // Siblings are other numeric files in the same parent directory
+      siblings = loadedAllEntries.filter(e => {
+        if (e.stType !== -3 || e.sector === currentSector) return false;
+        const ePath = e.path;
+        const eParent = ePath.substring(0, ePath.lastIndexOf('/'));
+        return eParent === parentPath && /^\d+$/.test(e.name);
+      });
+      siblings.push(entry); // include self
+    }
+    // Sort by numeric size
+    siblings.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+    return siblings;
+  }
+
+  const rawFont = parseDiskFont(data);
+
+  // ── Descriptor file ──
+  if (rawFont && rawFont.isDescriptor) {
+    const siblings = findSiblingFonts(sector);
+    const fontName = rawFont.fontName || name.replace(/\.font$/i, '');
+
+    if (siblings.length === 0) {
+      // No size files found — just show descriptor info
+      display.innerHTML = fcHeader(name, 'FONT', sizeStr, 'fc-badge-font') +
+        `<div style="padding:20px;font-family:var(--font-mono)">
+           <div class="fc-font-header">
+             <span style="font-size:32px">🔤</span>
+             <div>
+               <div style="font-family:var(--font-title);font-size:13px;letter-spacing:2px;color:var(--wb-orange)">${safeHtml(fontName)}</div>
+               <div style="color:var(--wb-dim);font-size:11px;margin-top:4px">Font descriptor — no size files found in directory</div>
+             </div>
+           </div>
+           <div class="kv-grid" style="margin-top:12px;max-width:400px">
+             <div class="kv-key">File</div><div class="kv-val highlight">${safeHtml(name)}</div>
+             <div class="kv-key">Font Name</div><div class="kv-val">${safeHtml(fontName)}</div>
+             <div class="kv-key">Type</div><div class="kv-val">AmigaDOS Disk Font Descriptor</div>
+           </div>
+         </div>`;
+      return;
+    }
+
+    // Load and render all sibling size files
+    const sizeEntries = siblings.map(e => ({ size: parseInt(e.name), entry: e }));
+    renderFontMultiSize(display, fontName, name, sizeStr, sizeEntries, PANGRAM);
+    return;
+  }
+
+  // ── Bitmap size file ──
+  if (rawFont && !rawFont.isDescriptor) {
+    // Try to find siblings for a richer view
+    const siblings = findSiblingFonts(sector);
+    if (siblings.length > 1) {
+      const sizeEntries = siblings.map(e => ({ size: parseInt(e.name), entry: e }));
+      renderFontMultiSize(display, rawFont.fontName || name, name, sizeStr, sizeEntries, PANGRAM);
+    } else {
+      renderFontSingle(display, name, sizeStr, data, rawFont, PANGRAM);
+    }
+    return;
+  }
+
+  display.innerHTML = fcError(name, sizeStr, 'Could not parse Amiga font structure');
+}
+
+// Render a single font size with pangram + glyph atlas
+function renderFontSingle(display, name, sizeStr, data, font, pangram) {
+  font._data = data;
+
+  const { fontName, ySize, xSize, baseline, style, flags, loChar, hiChar, modulo, numChars } = font;
+  const COLS  = 16;
+  const SCALE = Math.max(1, Math.min(4, Math.floor(56 / ySize)));
+  const PAD   = 2;
+  const atlasColCount = Math.min(COLS, numChars - 1);
+  const cellW  = (xSize + PAD * 2) * SCALE;
+  const cellH  = (ySize + PAD * 2) * SCALE + 10;
+  const atlasRows = Math.ceil((numChars - 1) / COLS);
+  const atlasH = atlasRows * cellH;
+  const canvasW = COLS * cellW;
+
+  // Pangram section: estimate height
+  const pangScale = Math.max(1, Math.min(3, SCALE));
+  const lineH = Math.floor(ySize * pangScale * 1.3);
+  const numLines = Math.ceil(pangram.length / 20); // rough estimate
+  const pangH = (numLines + 2) * lineH + 30;
+  const sepH = 20;
+  const canvasH = pangH + sepH + atlasH;
+
+  const styleBits = [[0x01,'Underlined'],[0x02,'Bold'],[0x04,'Italic'],
+    [0x08,'Extended'],[0x40,'Color'],[0x80,'Tagged']]
+    .filter(([b]) => style & b).map(([, n]) => n).join(', ') || 'Plain';
+  const flagBits = [[0x01,'ROM'],[0x08,'RevPath'],[0x10,'TallDot'],[0x20,'WideDot'],
+    [0x40,'Proportional'],[0x80,'Designed']]
+    .filter(([b]) => flags & b).map(([, n]) => n).join(', ') || 'None';
+
+  display.innerHTML = fcHeader(name, 'FONT', sizeStr, 'fc-badge-font') +
+    `<div class="fc-font-props">
+       <div class="kv-grid" style="font-size:10px">
+         <div class="kv-key">Font Name</div><div class="kv-val highlight">${safeHtml(fontName || '(unnamed)')}</div>
+         <div class="kv-key">Size</div><div class="kv-val">${xSize} × ${ySize} px · Baseline ${baseline}</div>
+         <div class="kv-key">Char Range</div><div class="kv-val">0x${loChar.toString(16).padStart(2,'0').toUpperCase()}–0x${hiChar.toString(16).padStart(2,'0').toUpperCase()} (${numChars-1} glyphs)</div>
+         <div class="kv-key">Style</div><div class="kv-val">${styleBits}</div>
+         <div class="kv-key">Flags</div><div class="kv-val">${flagBits}</div>
+         <div class="kv-key">Modulo</div><div class="kv-val">${modulo} bytes/row</div>
+       </div>
+     </div>
+     <div class="fc-font-canvas-wrap">
+       <canvas id="fc-font-canvas" width="${canvasW}" height="${canvasH}" style="display:block;image-rendering:pixelated;border:1px solid var(--wb-border)"></canvas>
+     </div>`;
+
+  setTimeout(() => {
+    const canvas = document.getElementById('fc-font-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#08081a';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Section label: Pangram
+    ctx.fillStyle = 'rgba(255,136,0,0.12)';
+    ctx.fillRect(0, 0, canvasW, pangH);
+    ctx.fillStyle = '#444';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${ySize}px · "${pangram}"`, 6, 4);
+
+    // Draw pangram
+    const rendered = drawPangram(ctx, font, pangram, 8, 18, '#e8e8ff', '#08081a', pangScale);
+
+    // Separator
+    const sepY = pangH;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(0, sepY, canvasW, sepH);
+    ctx.fillStyle = '#334';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GLYPH ATLAS', 6, sepY + sepH / 2);
+
+    // Draw atlas
+    buildGlyphAtlas(ctx, font, pangH + sepH, SCALE);
+  }, 0);
+}
+
+// Render multiple font sizes (one section per size) with pangrams
+function renderFontMultiSize(display, fontName, descName, sizeStr, sizeEntries, pangram) {
+  display.innerHTML = fcHeader(descName, 'FONT', sizeStr, 'fc-badge-font') +
+    `<div style="flex:1;overflow-y:auto;background:#08081a" id="fc-font-multisize">
+       <div style="padding:10px 14px;background:var(--wb-panel2);border-bottom:1px solid var(--wb-border)">
+         <div style="font-family:var(--font-title);font-size:12px;letter-spacing:3px;color:var(--wb-orange)">${safeHtml(fontName)}</div>
+         <div style="font-family:var(--font-mono);font-size:10px;color:var(--wb-dim);margin-top:3px">${sizeEntries.length} available size${sizeEntries.length !== 1 ? 's' : ''} · AmigaDOS Disk Font</div>
+       </div>
+       <div id="fc-font-sections"></div>
+     </div>`;
+
+  // Load and draw each size asynchronously
+  setTimeout(() => {
+    const container = document.getElementById('fc-font-sections');
+    if (!container) return;
+
+    sizeEntries.forEach(({ size, entry }) => {
+      // Create a placeholder section
+      const sec = document.createElement('div');
+      sec.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.06);padding:14px';
+      sec.innerHTML = `
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+          <span style="font-family:var(--font-title);font-size:11px;letter-spacing:2px;color:var(--wb-orange)">${size}px</span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--wb-dim)">${safeHtml(entry.name)}</span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--wb-dim)">${formatSize(entry.size)}</span>
+        </div>
+        <div id="fc-font-sec-${size}" style="min-height:30px;display:flex;align-items:center;justify-content:flex-start">
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--wb-dim)">Loading…</span>
+        </div>`;
+      container.appendChild(sec);
+
+      // Read and render this size
+      setTimeout(() => {
+        try {
+          const fdata = readFileData(entry.sector, entry.size);
+          const font = parseDiskFont(fdata);
+          if (!font || font.isDescriptor) {
+            document.getElementById(`fc-font-sec-${size}`).innerHTML =
+              `<span style="font-family:var(--font-mono);font-size:10px;color:var(--wb-red)">Parse failed</span>`;
+            return;
+          }
+          font._data = fdata;
+          renderFontSizeSection(document.getElementById(`fc-font-sec-${size}`), font, pangram, size);
+        } catch(e) {
+          const el = document.getElementById(`fc-font-sec-${size}`);
+          if (el) el.innerHTML = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--wb-red)">Error: ${safeHtml(String(e.message||e))}</span>`;
+        }
+      }, 0);
+    });
+  }, 0);
+}
+
+// Render a font pangram + mini atlas into a pre-existing container element
+function renderFontSizeSection(container, font, pangram, ptSize) {
+  const { ySize, xSize, loChar, hiChar, numChars } = font;
+  const SCALE = Math.max(1, Math.min(3, Math.floor(40 / ySize)));
+  const COLS  = 32; // wide atlas
+  const PAD   = 1;
+  const cellW = (xSize + PAD * 2) * SCALE;
+  const cellH = (ySize + PAD * 2) * SCALE + 8;
+  const atlasRows = Math.ceil((numChars - 1) / COLS);
+  const atlasH = atlasRows * cellH;
+  const canvasW = Math.max(600, COLS * cellW);
+
+  // Pangram height estimate
+  const pangScale = SCALE;
+  const lineH = Math.floor(ySize * pangScale * 1.35);
+  const chars = pangram.length;
+  const charsPerLine = Math.max(1, Math.floor((canvasW - 16) / Math.max(1, xSize * pangScale)));
+  const estLines = Math.ceil(chars / charsPerLine) + 1;
+  const pangH = estLines * lineH + 12;
+
+  const sepH = 14;
+  const totalH = pangH + sepH + atlasH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = canvasW;
+  canvas.height = totalH;
+  canvas.style.cssText = 'display:block;image-rendering:pixelated;max-width:100%';
+  container.innerHTML = '';
+  container.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#08081a';
+  ctx.fillRect(0, 0, canvasW, totalH);
+
+  // Pangram area
+  ctx.fillStyle = 'rgba(255,255,255,0.02)';
+  ctx.fillRect(0, 0, canvasW, pangH);
+  drawPangram(ctx, font, pangram, 8, 6, '#d0d0ff', '#08081a', pangScale);
+
+  // Separator + atlas label
+  ctx.fillStyle = 'rgba(255,136,0,0.08)';
+  ctx.fillRect(0, pangH, canvasW, sepH);
+  ctx.fillStyle = '#664';
+  ctx.font = '7px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('GLYPHS', 4, pangH + sepH / 2);
+
+  // Atlas
+  buildGlyphAtlas(ctx, font, pangH + sepH, SCALE);
 }
 
 // ── TEXT ─────────────────────────────────────────────────────────────────────
@@ -3429,7 +4828,8 @@ function renderANIMContent(display, name, sizeStr, data, topChunks) {
     return;
   }
   fcZoom = 1;
-  display.innerHTML = fcHeader(name, 'IFF/ANIM', sizeStr, 'iff') +
+  const playBtn = `<button class="fc-play-btn playing" id="fc-play-btn" onclick="fcAnimToggle()" title="Play/pause animation">⏸ PAUSE</button>`;
+  display.innerHTML = fcHeader(name, 'IFF/ANIM', sizeStr, 'iff', playBtn) +
     `<div class="fc-image-outer">
       <div class="fc-image-canvas-area" id="fc-canvas-area">
         <canvas id="fc-canvas"></canvas>
@@ -3478,8 +4878,11 @@ window.fcAnimToggle = function() {
   const state = window._fcAnim;
   if (!state) return;
   state.playing = !state.playing;
-  const btn = document.getElementById('fc-anim-play');
-  if (btn) btn.textContent = state.playing ? '⏸ PAUSE' : '▶ PLAY';
+  const label = state.playing ? '⏸ PAUSE' : '▶ PLAY';
+  const toolbarBtn = document.getElementById('fc-anim-play');
+  if (toolbarBtn) toolbarBtn.textContent = label;
+  const hdrBtn = document.getElementById('fc-play-btn');
+  if (hdrBtn) { hdrBtn.textContent = label; hdrBtn.classList.toggle('playing', state.playing); }
   if (state.playing) {
     const anim = state.anim;
     const canvas = document.getElementById('fc-canvas');
@@ -3512,10 +4915,19 @@ function render8SVXContent(display, name, sizeStr, data, topChunks) {
     display.innerHTML = fcError(name, 0, '8SVX decode failed');
     return;
   }
+  // Store for playback
+  window._fcSvxAudio = audio;
+  fcSvxStop(); // stop any previous
+
   const dur = (audio.floatSamples.length / audio.sampleRate).toFixed(3);
-  display.innerHTML = fcHeader(name, 'IFF/8SVX', sizeStr, 'iff') +
-    `<div style="flex:1;display:flex;flex-direction:column;gap:0">
-      <canvas id="fc-wave-canvas" style="width:100%;height:120px;display:block;background:#0a0e1a;flex-shrink:0"></canvas>
+  const playBtn = `<button class="fc-play-btn" id="fc-play-btn" onclick="fcSvxToggle()" title="Play audio">▶ PLAY</button>`;
+
+  display.innerHTML = fcHeader(name, 'IFF/8SVX', sizeStr, 'iff', playBtn) +
+    `<div id="fc-svx-progbar" style="height:3px;background:rgba(0,255,136,0.1);flex-shrink:0;position:relative">
+       <div id="fc-svx-progress" style="height:100%;background:var(--wb-green);width:0%;transition:none"></div>
+     </div>
+     <div style="flex:1;display:flex;flex-direction:column;gap:0">
+      <canvas id="fc-wave-canvas" style="width:100%;height:120px;display:block;background:#0a0e1a;flex-shrink:0;cursor:pointer" title="Click to play/pause" onclick="fcSvxToggle()"></canvas>
       <div style="flex:1;padding:16px;overflow-y:auto">
         <div class="kv-grid" style="max-width:480px">
           <div class="kv-key">Sample Rate</div><div class="kv-val highlight">${audio.sampleRate.toLocaleString()} Hz</div>
@@ -3537,45 +4949,597 @@ function render8SVXContent(display, name, sizeStr, data, topChunks) {
     if (!cv) return;
     cv.width  = cv.offsetWidth  || 800;
     cv.height = cv.offsetHeight || 120;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#0a0e1a';
-    ctx.fillRect(0, 0, cv.width, cv.height);
-    const samples = audio.floatSamples;
-    const step = Math.max(1, Math.floor(samples.length / cv.width));
-    const mid = cv.height / 2;
-    ctx.strokeStyle = '#00ff88';
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    for (let x = 0; x < cv.width; x++) {
-      const si = x * step;
-      let min = 1, max = -1;
-      for (let j = 0; j < step && si+j < samples.length; j++) {
-        const v = samples[si+j];
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }
-      const y1 = mid + min * (mid - 2);
-      const y2 = mid + max * (mid - 2);
-      if (x === 0) ctx.moveTo(x, y1);
-      ctx.lineTo(x, y1);
-      ctx.lineTo(x, y2);
-    }
-    ctx.stroke();
-    // centre line
-    ctx.strokeStyle = 'rgba(0,255,136,0.2)';
-    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(cv.width,mid); ctx.stroke();
+    drawFcWaveform(cv, audio.floatSamples);
   });
+}
+
+// ── FC Audio / Waveform helpers ───────────────────────────────────────────────
+
+function drawFcWaveform(canvas, samples) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#0a0e1a';
+  ctx.fillRect(0, 0, w, h);
+  if (!samples || samples.length === 0) return;
+  const step = Math.max(1, Math.floor(samples.length / w));
+  const mid  = h / 2;
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x < w; x++) {
+    const si = x * step;
+    let mn = 1, mx = -1;
+    for (let j = 0; j < step && si + j < samples.length; j++) {
+      const v = samples[si + j];
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    const y1 = mid + mn * (mid - 2);
+    const y2 = mid + mx * (mid - 2);
+    if (x === 0) ctx.moveTo(x, y1); else ctx.lineTo(x, y1);
+    ctx.lineTo(x, y2);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,255,136,0.15)';
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+}
+
+// ── 8SVX inline playback (File Content View) ─────────────────────────────────
+
+let _fcSvxState = null;
+
+function fcSvxStop() {
+  if (_fcSvxState) {
+    try { _fcSvxState.source.stop(); } catch(e) {}
+    if (_fcSvxState.raf) cancelAnimationFrame(_fcSvxState.raf);
+    _fcSvxState = null;
+  }
+  const bar = document.getElementById('fc-svx-progress');
+  if (bar) bar.style.width = '0%';
+  const btn = document.getElementById('fc-play-btn');
+  if (btn) { btn.textContent = '▶ PLAY'; btn.classList.remove('playing'); }
+  // Redraw clean waveform without playhead
+  const audio = window._fcSvxAudio;
+  const cv    = document.getElementById('fc-wave-canvas');
+  if (audio && cv) drawFcWaveform(cv, audio.floatSamples);
+}
+
+function fcSvxToggle() {
+  if (_fcSvxState) { fcSvxStop(); return; }
+  const audio = window._fcSvxAudio;
+  if (!audio) return;
+
+  const actx   = new (window.AudioContext || window.webkitAudioContext)();
+  const buf    = actx.createBuffer(1, audio.floatSamples.length, audio.sampleRate);
+  buf.getChannelData(0).set(audio.floatSamples);
+  const source = actx.createBufferSource();
+  source.buffer = buf;
+  source.connect(actx.destination);
+  source.start();
+
+  const startTime = actx.currentTime;
+  const duration  = audio.floatSamples.length / audio.sampleRate;
+  _fcSvxState = { source, actx, startTime, duration, raf: null };
+
+  const btn = document.getElementById('fc-play-btn');
+  if (btn) { btn.textContent = '⏸ PAUSE'; btn.classList.add('playing'); }
+
+  source.onended = () => {
+    if (_fcSvxState && _fcSvxState.source === source) fcSvxStop();
+  };
+
+  function animatePlayhead() {
+    if (!_fcSvxState) return;
+    const elapsed = _fcSvxState.actx.currentTime - _fcSvxState.startTime;
+    const pct = Math.min(100, (elapsed / duration) * 100);
+
+    // Progress bar
+    const bar = document.getElementById('fc-svx-progress');
+    if (bar) bar.style.width = pct + '%';
+
+    // Playhead line on waveform
+    const cv = document.getElementById('fc-wave-canvas');
+    if (cv) {
+      drawFcWaveform(cv, audio.floatSamples);
+      const ctx = cv.getContext('2d');
+      const x   = (pct / 100) * cv.width;
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); ctx.stroke();
+    }
+
+    _fcSvxState.raf = requestAnimationFrame(animatePlayhead);
+  }
+  _fcSvxState.raf = requestAnimationFrame(animatePlayhead);
+}
+
+// Auto-stop 8SVX when leaving the file content panel
+window._fcSvxAutoStop = function() { if (_fcSvxState) fcSvxStop(); };
+
+// ── MOD Export to MP3 ─────────────────────────────────────────────────────────
+
+function modExportMp3() {
+  const mod = window._modData;
+  if (!mod) return;
+
+  const btn = document.getElementById('fc-export-btn');
+  if (!btn) return;
+  btn.textContent = '⏳ RENDERING…';
+  btn.disabled = true;
+
+  // Give the UI a frame to repaint before the heavy work
+  setTimeout(() => {
+    try {
+      // Build a temporary player at 44100 Hz just for offline mixing
+      const dummyCtx = { sampleRate: 44100, createScriptProcessor: () => ({ connect: () => {}, onaudioprocess: null }),
+                         destination: null };
+      const player = createModPlayer(mod, dummyCtx);
+      const MAX_SECONDS = 300; // 5-minute cap
+      const { L, R, sampleRate } = player.renderPCM(44100, MAX_SECONDS);
+
+      // Trim silent tail (find last non-zero frame)
+      let lastFrame = L.length - 1;
+      while (lastFrame > 0 && Math.abs(L[lastFrame]) < 0.0001 && Math.abs(R[lastFrame]) < 0.0001) lastFrame--;
+      const trimmedL = L.subarray(0, lastFrame + 1);
+      const trimmedR = R.subarray(0, lastFrame + 1);
+
+      btn.textContent = '⏳ ENCODING…';
+
+      // Load lamejs dynamically if not already loaded
+      function doEncode() {
+        if (typeof lamejs === 'undefined') {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+          script.onload = doEncode;
+          script.onerror = () => { btn.textContent = '⬇ MP3'; btn.disabled = false; alert('lamejs failed to load — check network'); };
+          document.head.appendChild(script);
+          return;
+        }
+
+        // Convert float32 → int16 for lamejs
+        function toInt16(float32) {
+          const out = new Int16Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            const v = Math.max(-1, Math.min(1, float32[i]));
+            out[i] = v < 0 ? v * 32768 : v * 32767;
+          }
+          return out;
+        }
+        const int16L = toInt16(trimmedL);
+        const int16R = toInt16(trimmedR);
+
+        const mp3enc   = new lamejs.Mp3Encoder(2, sampleRate, 192);
+        const mp3Parts = [];
+        const CHUNK    = 1152;
+        for (let i = 0; i < int16L.length; i += CHUNK) {
+          const lc  = int16L.subarray(i, i + CHUNK);
+          const rc  = int16R.subarray(i, i + CHUNK);
+          const enc = mp3enc.encodeBuffer(lc, rc);
+          if (enc.length > 0) mp3Parts.push(new Uint8Array(enc));
+        }
+        const tail = mp3enc.flush();
+        if (tail.length > 0) mp3Parts.push(new Uint8Array(tail));
+
+        const blob = new Blob(mp3Parts, { type: 'audio/mpeg' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = mod.title ? mod.title.replace(/[^a-zA-Z0-9_\-. ]/g, '').trim() + '.mp3' : 'module.mp3';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        btn.textContent = '⬇ MP3';
+        btn.disabled = false;
+      }
+      doEncode();
+    } catch(err) {
+      console.error('MP3 export error:', err);
+      btn.textContent = '⬇ MP3';
+      btn.disabled = false;
+      alert('Export failed: ' + err.message);
+    }
+  }, 50);
 }
 
 // ── Generic IFF ───────────────────────────────────────────────────────────────
 
 function renderGenericIFF(display, name, sizeStr, data, topChunks, formType) {
+  // Collect text meta chunks
+  const metaIds = ['NAME','AUTH','COPYRIGHT','ANNO','TEXT','FVER'];
+  let metaHtml = '';
+  metaIds.forEach(id => {
+    const c = findChunk(topChunks, id);
+    if (!c) return;
+    let txt = '';
+    for (let i = c.dataStart; i < c.dataEnd && data[i]; i++) txt += String.fromCharCode(data[i]);
+    if (txt.trim()) metaHtml += `<div class="kv-key">${id}</div><div class="kv-val">${safeHtml(txt.trim())}</div>`;
+  });
+
+  // Known-type descriptions for generic display
+  const FORM_DESCS = {
+    'TDDD':'Imagine 3D scene','DR2D':'2D vector drawing','YUVN':'YUV image',
+    'ANBM':'Amiga continuous anim','SVRD':'Sculpt 3D','PREF':'Preferences data',
+    'DTYP':'DataType descriptor','MIDI':'MIDI data','MUVI':'Movie',
+    'CMAP':'Color map','FAXX':'Fax document',
+  };
+  const desc = FORM_DESCS[formType] || 'IFF file';
+
   display.innerHTML = fcHeader(name, `IFF/${formType}`, sizeStr, 'iff') +
-    `<div style="flex:1;overflow-y:auto;padding:12px">
-       <div style="font-family:var(--font-title);font-size:9px;letter-spacing:2px;color:var(--wb-dim);margin-bottom:8px;text-transform:uppercase">IFF Chunk Structure</div>
-       <div id="fc-chunk-tree"></div>
-     </div>`;
+    `<div style="flex:1;overflow-y:auto;padding:0">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--wb-border);background:var(--wb-panel2);display:flex;align-items:center;gap:14px">
+        <span style="font-size:32px">📦</span>
+        <div>
+          <div style="font-family:var(--font-title);font-size:14px;letter-spacing:3px;color:var(--wb-orange)">${formType}</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--wb-dim);margin-top:3px">${desc}</div>
+        </div>
+      </div>
+      ${metaHtml ? `<div class="kv-grid" style="padding:12px 16px">${metaHtml}</div>` : ''}
+      <div style="padding:12px 16px">
+        <div style="font-family:var(--font-title);font-size:9px;letter-spacing:2px;color:var(--wb-dim);margin-bottom:8px;text-transform:uppercase">IFF Chunk Structure</div>
+        <div id="fc-chunk-tree"></div>
+      </div>
+    </div>`;
   document.getElementById('fc-chunk-tree').innerHTML = renderChunkTree(topChunks, data);
+}
+
+// ── ACBM — Amiga Continuous BitMap ───────────────────────────────────────────
+// Like ILBM but stores bitplanes contiguously (all plane-0 rows, then all plane-1 rows…)
+// Chunk: BMHD (same as ILBM), CMAP (same), CAMG (same), ABIT (contiguous bitplane data)
+
+function renderACBMContent(display, name, sizeStr, data, topChunks) {
+  const innerChunks = topChunks[0]?.children || topChunks;
+  let ilbm;
+  try { ilbm = decodeACBM(data, innerChunks); } catch(e) { console.error(e); }
+  if (!ilbm) {
+    display.innerHTML = fcError(name, 0, 'ACBM decode failed — file may be corrupt');
+    return;
+  }
+  fcZoom = computeDefaultZoom(ilbm.width, ilbm.height);
+  display.innerHTML = fcHeader(name, 'IFF/ACBM', sizeStr, 'iff') +
+    `<div class="fc-image-outer">
+      <div class="fc-image-canvas-area" id="fc-canvas-area">
+        <canvas id="fc-canvas"></canvas>
+      </div>
+      <div class="fc-image-toolbar">
+        <button class="fc-zoom-btn" onclick="fcZoomBy(2)">+</button>
+        <button class="fc-zoom-btn" onclick="fcZoomBy(0.5)">−</button>
+        <button class="fc-zoom-btn" onclick="fcZoomFit()" style="font-size:10px;width:auto;padding:0 6px">Fit</button>
+        <button class="fc-zoom-btn" onclick="fcZoomSet(1)" style="font-size:10px;width:auto;padding:0 6px">1×</button>
+        <span class="fc-toolbar-sep">|</span>
+        <span class="fc-toolbar-stat"><span id="fc-zoom-label">${fcZoom}×</span></span>
+        <span class="fc-toolbar-sep">|</span>
+        <span class="fc-toolbar-stat">Size: <span>${ilbm.width} × ${ilbm.height}</span></span>
+        <span class="fc-toolbar-stat">Planes: <span>${ilbm.nPlanes}</span></span>
+        <span class="fc-toolbar-stat">Colors: <span>${1 << ilbm.nPlanes}</span></span>
+        <span class="fc-toolbar-stat">Format: <span>ACBM (contiguous)</span></span>
+      </div>
+    </div>
+    ${buildILBMPropsPanel(data, innerChunks, ilbm)}`;
+
+  const canvas = document.getElementById('fc-canvas');
+  canvas.width  = ilbm.width;
+  canvas.height = ilbm.height;
+  canvas.getContext('2d').putImageData(new ImageData(ilbm.pixels, ilbm.width, ilbm.height), 0, 0);
+  fcApplyZoom();
+  activateFCPropsTab('bmhd');
+}
+
+function decodeACBM(data, chunks) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const bmhdChunk = findChunk(chunks, 'BMHD');
+  if (!bmhdChunk) return null;
+  const b = bmhdChunk.dataStart;
+  if (b + 16 > data.byteLength) return null;
+  const w       = view.getUint16(b, false);
+  const h       = view.getUint16(b + 2, false);
+  const nPlanes = data[b + 8];
+  if (w === 0 || h === 0 || nPlanes === 0 || nPlanes > 8) return null;
+
+  // Palette
+  const cmapChunk = findChunk(chunks, 'CMAP');
+  const palette = [];
+  if (cmapChunk) {
+    const numColors = Math.floor(cmapChunk.size / 3);
+    for (let i = 0; i < numColors; i++) {
+      const ci = cmapChunk.dataStart + i * 3;
+      palette.push([data[ci], data[ci+1], data[ci+2]]);
+    }
+  }
+  while (palette.length < 256) palette.push([0, 0, 0]);
+
+  const camgChunk = findChunk(chunks, 'CAMG');
+  const camg = camgChunk ? view.getUint32(camgChunk.dataStart, false) : 0;
+  const isEHB = !!(camg & 0x0080);
+  if (isEHB) {
+    for (let i = 0; i < 32; i++) {
+      const c = palette[i] || [0,0,0];
+      palette[i + 32] = [c[0] >> 1, c[1] >> 1, c[2] >> 1];
+    }
+  }
+
+  const abitChunk = findChunk(chunks, 'ABIT');
+  if (!abitChunk) return null;
+
+  // ACBM: each bitplane is stored contiguously: bytesPerRow * h bytes
+  const bytesPerRow = Math.floor((w + 15) / 16) * 2;
+  const planeSize   = bytesPerRow * h;
+  const abit        = data.slice(abitChunk.dataStart, abitChunk.dataEnd);
+
+  const pixels = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let colorIdx = 0;
+      for (let p = 0; p < nPlanes; p++) {
+        const planeOff = p * planeSize + y * bytesPerRow + (x >> 3);
+        if (planeOff < abit.length) {
+          if (abit[planeOff] & (0x80 >> (x & 7))) colorIdx |= (1 << p);
+        }
+      }
+      const [r, g, b2] = palette[colorIdx] || [0, 0, 0];
+      const idx = (y * w + x) * 4;
+      pixels[idx] = r; pixels[idx+1] = g; pixels[idx+2] = b2; pixels[idx+3] = 255;
+    }
+  }
+  return { width: w, height: h, pixels, nPlanes, palette,
+           masking: data[b+9], compress: 0, transpColor: 0,
+           xAspect: data[b+14], yAspect: data[b+15],
+           isHAM: false, isEHB, isHires: !!(camg&0x8000), isInterlace: !!(camg&0x0004), isHAM8: false, camg };
+}
+
+// ── FTXT — IFF Formatted Text ─────────────────────────────────────────────────
+// FORM/FTXT with a CHRS chunk containing raw text (Amiga charset)
+// Optional: PROP/FTXT or FONS (font name), STYL (style runs)
+
+function renderFTXTContent(display, name, sizeStr, data, topChunks) {
+  const innerChunks = topChunks[0]?.children || topChunks;
+  const chrsChunk = findChunk(innerChunks, 'CHRS') || findChunk(topChunks, 'CHRS');
+
+  let text = '';
+  if (chrsChunk) {
+    for (let i = chrsChunk.dataStart; i < chrsChunk.dataEnd; i++) {
+      const c = data[i];
+      if (c === 0x0A) { text += '\n'; continue; }
+      if (c === 0x0D) { if (data[i+1] === 0x0A) continue; text += '\n'; continue; }
+      if (c === 0x09) { text += '\t'; continue; }
+      if (c === 0) continue;
+      text += String.fromCharCode(c);
+    }
+  }
+
+  // Look for font information in FONS chunk
+  const fonsChunk = findChunk(innerChunks, 'FONS') || findChunk(topChunks, 'FONS');
+  let fontInfo = '';
+  if (fonsChunk) {
+    let fname = '';
+    for (let i = fonsChunk.dataStart; i < fonsChunk.dataEnd && data[i]; i++)
+      if (data[i] >= 0x20 && data[i] < 0x7F) fname += String.fromCharCode(data[i]);
+    if (fname) fontInfo = `<div class="kv-key">Font</div><div class="kv-val amber">${safeHtml(fname)}</div>`;
+  }
+
+  // Style runs from STYL chunk (word pairs: offset, style)
+  const stylChunk = findChunk(innerChunks, 'STYL') || findChunk(topChunks, 'STYL');
+  let stylInfo = '';
+  if (stylChunk) {
+    const nRuns = stylChunk.size / 4;
+    stylInfo = `<div class="kv-key">Style runs</div><div class="kv-val">${Math.floor(nRuns)}</div>`;
+  }
+
+  const lines = text ? text.split('\n') : [];
+  const byteCount = chrsChunk ? chrsChunk.size : 0;
+
+  display.innerHTML = fcHeader(name, 'IFF/FTXT', sizeStr, 'iff') +
+    `<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div style="padding:8px 14px;background:var(--wb-panel2);border-bottom:1px solid var(--wb-border);display:flex;gap:16px;align-items:center;flex-shrink:0">
+        <span style="font-family:var(--font-title);font-size:8px;letter-spacing:2px;color:var(--wb-dim)">
+          ${lines.length.toLocaleString()} LINES · ${byteCount.toLocaleString()} BYTES
+        </span>
+        ${fontInfo ? `<div class="kv-grid" style="gap:2px 8px;font-size:10px">${fontInfo}${stylInfo}</div>` : ''}
+      </div>
+      ${text
+        ? `<div class="fc-text-wrap"><div class="fc-text-content">${safeHtml(text)}</div></div>`
+        : `<div style="flex:1;display:flex;align-items:center;justify-content:center;opacity:0.4">
+             <div style="text-align:center">
+               <div style="font-size:36px">📄</div>
+               <div style="font-family:var(--font-mono);font-size:11px;margin-top:8px">No CHRS text chunk found</div>
+             </div>
+           </div>`
+      }
+    </div>`;
+}
+
+// ── SMUS / CMUS — Simple Music Score ─────────────────────────────────────────
+// FORM/SMUS: MHDR (tempo/vol/octave), SB64 (IFF-85 instrument names), TRAK (4 tracks)
+// Events in TRAK: cmd nibble | data nibble pairs
+//   0x00 = rest(1 unit), 0x01–0x3F = note(pitch,duration pair), 0x80–0xFF = program change
+
+function renderSMUSContent(display, name, sizeStr, data, topChunks, formType) {
+  const innerChunks = topChunks[0]?.children || topChunks;
+  const mhdrChunk = findChunk(innerChunks, 'MHDR') || findChunk(topChunks, 'MHDR');
+  const sb64Chunk = findChunk(innerChunks, 'SB64') || findChunk(topChunks, 'SB64');
+  const trakChunks = allChunksOfId(innerChunks, 'TRAK').concat(allChunksOfId(topChunks, 'TRAK'));
+  const nameChunk  = findChunk(innerChunks, 'NAME') || findChunk(topChunks, 'NAME');
+
+  let title = '';
+  if (nameChunk) {
+    for (let i = nameChunk.dataStart; i < nameChunk.dataEnd && data[i]; i++)
+      if (data[i] >= 0x20 && data[i] < 0x7F) title += String.fromCharCode(data[i]);
+  }
+
+  let tempo = 0, volume = 0, ctOctave = 0, numInst = 0, masterVol = 0;
+  if (mhdrChunk && mhdrChunk.size >= 8) {
+    const v = new DataView(data.buffer, data.byteOffset + mhdrChunk.dataStart, mhdrChunk.size);
+    tempo     = v.getUint16(0, false);
+    volume    = v.getUint16(2, false);
+    ctOctave  = v.getUint8(4);
+    numInst   = v.getUint8(5);
+    masterVol = mhdrChunk.size >= 10 ? v.getUint8(9) : 0;
+  }
+
+  // Parse SB64 instrument names (null-terminated strings)
+  const instruments = [];
+  if (sb64Chunk) {
+    let i = sb64Chunk.dataStart, s = '';
+    while (i < sb64Chunk.dataEnd) {
+      const c = data[i++];
+      if (c === 0) { if (s) instruments.push(s); s = ''; }
+      else if (c >= 0x20 && c < 0x7F) s += String.fromCharCode(c);
+    }
+    if (s) instruments.push(s);
+  }
+
+  // Analyze TRAK events: count notes, rests, total events
+  const trackStats = trakChunks.map((tk, ti) => {
+    let notes = 0, rests = 0, progChanges = 0;
+    let i = tk.dataStart;
+    while (i < tk.dataEnd) {
+      const b0 = data[i++];
+      const cmd = (b0 >> 4) & 0xF;
+      if (cmd === 0) { rests++; }
+      else if (cmd >= 1 && cmd <= 6) { notes++; i++; } // note: 2 bytes
+      else if (cmd >= 8) { progChanges++; }
+    }
+    return { track: ti + 1, bytes: tk.size, notes, rests, progChanges };
+  });
+
+  const totalNotes = trackStats.reduce((s, t) => s + t.notes, 0);
+  const bpm = tempo ? Math.round(60000 / tempo) : 0;
+
+  const instList = instruments.length
+    ? instruments.map((n, i) => `<span class="fc-smus-inst">${i+1}. ${safeHtml(n)}</span>`).join('')
+    : '<span style="color:var(--wb-dim)">No instrument names</span>';
+
+  const trakRows = trackStats.map(t =>
+    `<div class="kv-key">Track ${t.track}</div>
+     <div class="kv-val">${t.notes} notes · ${t.rests} rests · ${t.progChanges} program changes · ${t.bytes} bytes</div>`
+  ).join('');
+
+  display.innerHTML = fcHeader(name, `IFF/${formType}`, sizeStr, 'iff') +
+    `<div style="flex:1;overflow-y:auto;padding:16px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <span style="font-size:36px">🎼</span>
+        <div>
+          <div style="font-family:var(--font-title);font-size:14px;letter-spacing:3px;color:var(--wb-orange)">
+            ${formType === 'CMUS' ? 'COMPRESSED MUSIC' : 'SIMPLE MUSIC SCORE'}
+          </div>
+          ${title ? `<div style="font-family:var(--font-mono);font-size:12px;color:var(--wb-amber);margin-top:4px">${safeHtml(title)}</div>` : ''}
+        </div>
+      </div>
+
+      ${mhdrChunk ? `
+      <div class="analysis-section">
+        <div class="analysis-title">Music Header (MHDR)</div>
+        <div class="kv-grid">
+          <div class="kv-key">Tempo</div><div class="kv-val highlight">${tempo} ms/beat ${bpm ? `≈ ${bpm} BPM` : ''}</div>
+          <div class="kv-key">Volume</div><div class="kv-val">${volume} / 255</div>
+          <div class="kv-key">Octave span</div><div class="kv-val">${ctOctave}</div>
+          <div class="kv-key">Instruments</div><div class="kv-val">${numInst}</div>
+          ${masterVol ? `<div class="kv-key">Master vol</div><div class="kv-val">${masterVol}</div>` : ''}
+        </div>
+      </div>` : ''}
+
+      ${trakChunks.length ? `
+      <div class="analysis-section">
+        <div class="analysis-title">Tracks (${trakChunks.length} total · ${totalNotes.toLocaleString()} notes)</div>
+        <div class="kv-grid">${trakRows}</div>
+      </div>` : ''}
+
+      ${instruments.length ? `
+      <div class="analysis-section">
+        <div class="analysis-title">Instruments (SB64)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:4px">${instList}</div>
+      </div>` : ''}
+
+      <div class="analysis-section">
+        <div class="analysis-title">IFF Chunk Structure</div>
+        <div id="fc-chunk-tree"></div>
+      </div>
+    </div>`;
+  document.getElementById('fc-chunk-tree').innerHTML = renderChunkTree(topChunks, data);
+}
+
+// ── RGBN / RGB8 — Deep Color Images ──────────────────────────────────────────
+// FORM/RGBN: 12-bit RGB stored as 3 nibbles per pixel, rows padded to word
+// FORM/RGB8: 24-bit RGB, 3 bytes per pixel, rows padded to word
+
+function renderRGBNContent(display, name, sizeStr, data, topChunks, formType) {
+  const innerChunks = topChunks[0]?.children || topChunks;
+  const bmhdChunk = findChunk(innerChunks, 'BMHD') || findChunk(topChunks, 'BMHD');
+  const bodyChunk = findChunk(innerChunks, 'BODY') || findChunk(topChunks, 'BODY');
+
+  if (!bmhdChunk || !bodyChunk) {
+    display.innerHTML = fcError(name, 0, `${formType}: missing BMHD or BODY chunk`);
+    return;
+  }
+  const bv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const b  = bmhdChunk.dataStart;
+  const w  = bv.getUint16(b, false);
+  const h  = bv.getUint16(b + 2, false);
+  if (w === 0 || h === 0 || w > 4096 || h > 4096) {
+    display.innerHTML = fcError(name, 0, `${formType}: invalid dimensions ${w}×${h}`);
+    return;
+  }
+
+  const pixels = new Uint8ClampedArray(w * h * 4);
+  const body = data.slice(bodyChunk.dataStart, bodyChunk.dataEnd);
+  let src = 0;
+
+  if (formType === 'RGB8') {
+    // 24-bit: R G B per pixel, rows padded to word (2-byte) boundary
+    const rowBytes = Math.ceil(w * 3 / 2) * 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const si = y * rowBytes + x * 3;
+        const di = (y * w + x) * 4;
+        pixels[di]   = body[si]   || 0;
+        pixels[di+1] = body[si+1] || 0;
+        pixels[di+2] = body[si+2] || 0;
+        pixels[di+3] = 255;
+      }
+    }
+  } else {
+    // RGBN: 12-bit nibble-per-channel (4 bits R, 4 bits G, 4 bits B)
+    // Stored as 2 bytes per pixel: byte0 = RRRRGGGG, byte1 = BBBB????
+    const rowBytes = Math.ceil(w * 2 / 2) * 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const si = y * rowBytes + x * 2;
+        const di = (y * w + x) * 4;
+        const b0 = body[si] || 0, b1 = body[si+1] || 0;
+        // Scale 4-bit to 8-bit: multiply by 17 (0xF → 0xFF)
+        pixels[di]   = ((b0 >> 4) & 0xF) * 17;
+        pixels[di+1] = (b0 & 0xF) * 17;
+        pixels[di+2] = ((b1 >> 4) & 0xF) * 17;
+        pixels[di+3] = 255;
+      }
+    }
+  }
+
+  fcZoom = computeDefaultZoom(w, h);
+  display.innerHTML = fcHeader(name, `IFF/${formType}`, sizeStr, 'iff') +
+    `<div class="fc-image-outer">
+      <div class="fc-image-canvas-area" id="fc-canvas-area">
+        <canvas id="fc-canvas"></canvas>
+      </div>
+      <div class="fc-image-toolbar">
+        <button class="fc-zoom-btn" onclick="fcZoomBy(2)">+</button>
+        <button class="fc-zoom-btn" onclick="fcZoomBy(0.5)">−</button>
+        <button class="fc-zoom-btn" onclick="fcZoomFit()" style="font-size:10px;width:auto;padding:0 6px">Fit</button>
+        <button class="fc-zoom-btn" onclick="fcZoomSet(1)" style="font-size:10px;width:auto;padding:0 6px">1×</button>
+        <span class="fc-toolbar-sep">|</span>
+        <span class="fc-toolbar-stat"><span id="fc-zoom-label">${fcZoom}×</span></span>
+        <span class="fc-toolbar-sep">|</span>
+        <span class="fc-toolbar-stat">Size: <span>${w} × ${h}</span></span>
+        <span class="fc-toolbar-stat">Depth: <span>${formType === 'RGB8' ? '24-bit' : '12-bit'}</span></span>
+        <span class="fc-toolbar-stat">Mode: <span>${formType === 'RGB8' ? 'True Color' : 'Deep Color (4444)'}</span></span>
+      </div>
+    </div>`;
+
+  const canvas = document.getElementById('fc-canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').putImageData(new ImageData(pixels, w, h), 0, 0);
+  fcApplyZoom();
 }
 
 // ── Binary hex dump ────────────────────────────────────────────────────────────
@@ -4101,9 +6065,63 @@ function createModPlayer(mod, audioCtx) {
     }
   }
 
+  // Offline PCM render — used for MP3 export.
+  // Returns { L: Float32Array, R: Float32Array } at 44100 Hz, master vol 1.0
+  function renderPCM(targetSampleRate, maxSeconds) {
+    // Save and reset playback state
+    const savedState = {
+      tick: state.tick, row: state.row, position: state.position,
+      speed: state.speed, tempo: state.tempo,
+      tickSampleCounter: state.tickSampleCounter,
+    };
+    const savedChannels = state.channels.map(ch => ({ ...ch, scopeBuf: ch.scopeBuf.slice() }));
+
+    state.tick = 0; state.row = 0; state.position = 0;
+    state.speed = 6; state.tempo = 125; state.tickSampleCounter = 0;
+    state.sampleRate = targetSampleRate;
+    updateSamplesPerTick();
+    for (const ch of state.channels) {
+      ch.samplePos = 0; ch.sampleInc = 0; ch.period = 0;
+      ch.volume = 0; ch.sample = 0; ch.lastNote = '';
+      ch.vibratoPos = 0; ch.tremoloPos = 0; ch.arpeggioNote = 0;
+    }
+    processRow();
+
+    const totalFrames = Math.floor(targetSampleRate * maxSeconds);
+    const outL = new Float32Array(totalFrames);
+    const outR = new Float32Array(totalFrames);
+    const chunk = 2048;
+    const tmpL = new Float32Array(chunk);
+    const tmpR = new Float32Array(chunk);
+    let written = 0;
+    const savedMV = state.masterVolume;
+    state.masterVolume = 1.0;
+
+    while (written < totalFrames) {
+      const n = Math.min(chunk, totalFrames - written);
+      tmpL.fill(0); tmpR.fill(0);
+      mixSample(tmpL, tmpR, n);
+      outL.set(tmpL.subarray(0, n), written);
+      outR.set(tmpR.subarray(0, n), written);
+      written += n;
+    }
+
+    // Restore
+    state.masterVolume = savedMV;
+    state.sampleRate = savedState.sampleRate || 44100;
+    Object.assign(state, { tick: savedState.tick, row: savedState.row,
+      position: savedState.position, speed: savedState.speed, tempo: savedState.tempo,
+      tickSampleCounter: savedState.tickSampleCounter });
+    state.channels.forEach((ch, i) => Object.assign(ch, savedChannels[i]));
+    updateSamplesPerTick();
+
+    return { L: outL, R: outR, sampleRate: targetSampleRate };
+  }
+
   state.start = start;
   state.stop = stop;
   state.setSampleInc = setSampleInc;
+  state.renderPCM = renderPCM;
   return state;
 }
 
@@ -4151,7 +6169,9 @@ function renderModContent(display, name, sizeStr, data) {
   const firstPat = mod.patterns[mod.order[0]] || mod.patterns[0];
   const patternHtml = renderModPattern(firstPat, chanCount, 0);
 
-  display.innerHTML = fcHeader(name, `MOD · ${chanCount}CH`, sizeStr, 'iff') +
+  display.innerHTML = fcHeader(name, `MOD · ${chanCount}CH`, sizeStr, 'iff',
+    `<button class="fc-play-btn" id="fc-play-btn" onclick="modTogglePlay()" title="Play/stop module">▶ PLAY</button>` +
+    `<button class="fc-export-btn" id="fc-export-btn" onclick="modExportMp3()" title="Export as MP3">⬇ MP3</button>`) +
     `<div class="mod-player">
       <div class="mod-controls">
         <button class="mod-play-btn" id="mod-play-btn" onclick="modTogglePlay()">▶ PLAY</button>
@@ -4253,8 +6273,7 @@ function modTogglePlay() {
 
   if (modPlayerState && modPlayerState.playing) {
     modPlayerState.stop();
-    document.getElementById('mod-play-btn').textContent = '▶ PLAY';
-    document.getElementById('mod-play-btn').classList.remove('playing');
+    _modSetPlayBtns(false);
     if (modPlayerState.animFrame) cancelAnimationFrame(modPlayerState.animFrame);
     return;
   }
@@ -4262,9 +6281,7 @@ function modTogglePlay() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   modPlayerState = createModPlayer(window._modData, ctx);
   modPlayerState.start();
-
-  document.getElementById('mod-play-btn').textContent = '⏸ PAUSE';
-  document.getElementById('mod-play-btn').classList.add('playing');
+  _modSetPlayBtns(true);
 
   // Start UI update loop
   let lastRow = -1, lastPos = -1;
@@ -4341,13 +6358,20 @@ function modTogglePlay() {
   modPlayerState.animFrame = requestAnimationFrame(updateUI);
 }
 
+function _modSetPlayBtns(playing) {
+  const label = playing ? '⏸ PAUSE' : '▶ PLAY';
+  const b1 = document.getElementById('mod-play-btn');
+  const b2 = document.getElementById('fc-play-btn');
+  if (b1) { b1.textContent = label; b1.classList.toggle('playing', playing); }
+  if (b2) { b2.textContent = label; b2.classList.toggle('playing', playing); }
+}
+
 function modStop() {
   if (modPlayerState) {
     modPlayerState.stop();
     modPlayerState = null;
   }
-  const btn = document.getElementById('mod-play-btn');
-  if (btn) { btn.textContent = '▶ PLAY'; btn.classList.remove('playing'); }
+  _modSetPlayBtns(false);
 
   // Clear scopes
   if (window._modData) {
@@ -4370,15 +6394,14 @@ function modSetVolume(val) {
   if (modPlayerState) modPlayerState.masterVolume = val / 100;
 }
 
-// Stop MOD player when switching tabs or loading new files
+// Stop MOD/8SVX player when switching away from file content tab
 (function() {
-  const origSwitchToFileContent = window.switchToFileContent;
-  // Hook into tab switching to stop playback
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      if (tab.dataset.tab !== 'filecontent' && modPlayerState) {
-        modPlayerState.stop();
-        modPlayerState = null;
+      if (tab.dataset.tab !== 'filecontent') {
+        if (modPlayerState) { modPlayerState.stop(); modPlayerState = null; }
+        if (typeof fcSvxStop === 'function') fcSvxStop();
+        if (window._fcAnim) { clearTimeout(window._fcAnim.timer); window._fcAnim.playing = false; }
       }
     });
   });
@@ -5163,6 +7186,70 @@ function renderIFFPreview(chunks, data, formType) {
     `;
     buildVUMeter();
 
+  } else if (formType === 'ACBM') {
+    const innerChunks = chunks[0]?.children || chunks;
+    const acbm = decodeACBM(data, innerChunks);
+    if (!acbm) {
+      document.getElementById('iff-view-generic').style.display = 'flex';
+      document.getElementById('iff-generic-type').textContent = 'ACBM (decode failed)';
+      return;
+    }
+    iffState.ilbm = acbm;
+    iffState.zoom = 1;
+    drawILBMToCanvas(acbm.pixels, acbm.width, acbm.height);
+    document.getElementById('iff-canvas').style.display = 'block';
+    showImageInfo(acbm);
+    showPalette(acbm.palette, 1 << acbm.nPlanes);
+
+  } else if (formType === 'RGBN' || formType === 'RGB8') {
+    const innerChunks = chunks[0]?.children || chunks;
+    const bmhd = findChunk(innerChunks, 'BMHD') || findChunk(chunks, 'BMHD');
+    const body = findChunk(innerChunks, 'BODY') || findChunk(chunks, 'BODY');
+    if (!bmhd || !body) {
+      document.getElementById('iff-view-generic').style.display = 'flex';
+      document.getElementById('iff-generic-type').textContent = `${formType} (missing chunks)`;
+      return;
+    }
+    const bv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    const w = bv.getUint16(bmhd.dataStart, false), h = bv.getUint16(bmhd.dataStart + 2, false);
+    const pixels = new Uint8ClampedArray(w * h * 4);
+    const bd = data.slice(body.dataStart, body.dataEnd);
+    if (formType === 'RGB8') {
+      const rw = Math.ceil(w * 3 / 2) * 2;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const si = y*rw+x*3, di = (y*w+x)*4;
+        pixels[di]=bd[si]||0; pixels[di+1]=bd[si+1]||0; pixels[di+2]=bd[si+2]||0; pixels[di+3]=255;
+      }
+    } else {
+      const rw = Math.ceil(w * 2 / 2) * 2;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const si = y*rw+x*2, di = (y*w+x)*4;
+        pixels[di]=((bd[si]>>4)&0xF)*17; pixels[di+1]=(bd[si]&0xF)*17; pixels[di+2]=((bd[si+1]>>4)&0xF)*17; pixels[di+3]=255;
+      }
+    }
+    iffState.zoom = 1;
+    drawILBMToCanvas(pixels, w, h);
+    document.getElementById('iff-canvas').style.display = 'block';
+    document.getElementById('iff-image-info').style.display = 'flex';
+    document.getElementById('img-size-val').textContent = `${w} × ${h}`;
+    document.getElementById('img-depth-val').textContent = formType === 'RGB8' ? '24-bit' : '12-bit';
+    document.getElementById('img-colors-val').textContent = 'True color';
+    document.getElementById('img-mode-val').textContent = formType;
+    document.getElementById('img-comp-val').textContent = 'None';
+    document.getElementById('img-aspect-val').textContent = '1:1';
+
+  } else if (formType === 'FTXT') {
+    const innerChunks = chunks[0]?.children || chunks;
+    const chrs = findChunk(innerChunks, 'CHRS') || findChunk(chunks, 'CHRS');
+    let txt = '';
+    if (chrs) for (let i = chrs.dataStart; i < chrs.dataEnd && data[i]; i++) txt += String.fromCharCode(data[i]);
+    document.getElementById('iff-view-generic').style.display = 'flex';
+    document.getElementById('iff-generic-type').textContent = txt.length ? `FTXT · ${txt.length.toLocaleString()} chars` : 'FTXT (empty)';
+
+  } else if (formType === 'SMUS' || formType === 'CMUS') {
+    document.getElementById('iff-view-generic').style.display = 'flex';
+    document.getElementById('iff-generic-type').textContent = formType === 'CMUS' ? 'Compressed Music Score' : 'Simple Music Score';
+
   } else {
     document.getElementById('iff-view-generic').style.display = 'flex';
     document.getElementById('iff-generic-type').textContent = formType;
@@ -5425,15 +7512,18 @@ function animateAudioProgress() {
 // ════════════════════════════════════════════════════
 
 const CHUNK_DESCS = {
-  FORM:'Container', LIST:'List', CAT:'Concatenation',
+  FORM:'Container', LIST:'List', 'CAT ':'Concatenation', PROP:'Property',
   BMHD:'Bitmap Header', CMAP:'Color Map', BODY:'Image/Sample Data',
   CAMG:'Amiga Viewport Mode', GRAB:'Hotspot', DEST:'Destination Merge',
   SPRT:'Sprite', CRNG:'Color Range / Cycling', CCRT:'Color Cycle',
+  ABIT:'Continuous Bitplane Data',
   VHDR:'Voice Header', ATCK:'Attack', RLSE:'Release',
   NAME:'Name', AUTH:'Author', COPYRIGHT:'Copyright', ANNO:'Annotation',
   TEXT:'Text', FVER:'File Version',
   ANHD:'Animation Header', DLTA:'Delta Frame',
-  MHDR:'Music Header', FORM:'IFF Container',
+  MHDR:'Music Header', TRAK:'Music Track', SB64:'IFF-85 Instrument Names',
+  CHRS:'Text Content', FONS:'Font Name', STYL:'Style Runs',
+  RGBN:'12-bit RGB Data', RGB8:'24-bit RGB Data',
 };
 
 function renderChunkTree(chunks, data) {
@@ -5518,6 +7608,66 @@ function renderIFFProps(chunks, data, formType) {
           <div class="kv-key">Octaves</div><div class="kv-val">${audio.octaves}</div>
           <div class="kv-key">Compression</div><div class="kv-val ${audio.compression?'warn':'highlight'}">${audio.compression===1?'Fibonacci Delta':'None (raw PCM)'}</div>
           <div class="kv-key">Volume</div><div class="kv-val">${audio.volume} (${((audio.volume/65536)*100).toFixed(1)}%)</div>
+        </div>
+      </div>`);
+    }
+  }
+  if (formType === 'ACBM') {
+    const bmhdChunk = findChunk(chunks, 'BMHD');
+    const abitChunk = findChunk(chunks, 'ABIT');
+    if (bmhdChunk) {
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const b = bmhdChunk.dataStart;
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">ACBM Bitmap Header</div>
+        <div class="kv-grid">
+          <div class="kv-key">Dimensions</div><div class="kv-val highlight">${view.getUint16(b,false)} × ${view.getUint16(b+2,false)} px</div>
+          <div class="kv-key">Bitplanes</div><div class="kv-val">${data[b+8]}</div>
+          <div class="kv-key">Colors</div><div class="kv-val">${1 << data[b+8]}</div>
+          <div class="kv-key">Storage</div><div class="kv-val highlight">Contiguous (ACBM)</div>
+          ${abitChunk ? `<div class="kv-key">ABIT size</div><div class="kv-val">${abitChunk.size.toLocaleString()} bytes</div>` : ''}
+        </div>
+      </div>`);
+    }
+  }
+  if (formType === 'FTXT') {
+    const chrs = findChunk(chunks, 'CHRS');
+    const fons = findChunk(chunks, 'FONS');
+    let info = '';
+    if (chrs) info += `<div class="kv-key">Text bytes</div><div class="kv-val highlight">${chrs.size.toLocaleString()}</div>`;
+    if (fons) {
+      let fn = '';
+      for (let i = fons.dataStart; i < fons.dataEnd && data[i]; i++) fn += String.fromCharCode(data[i]);
+      info += `<div class="kv-key">Font</div><div class="kv-val amber">${safeHtml(fn)}</div>`;
+    }
+    if (info) sections.push(`<div class="analysis-section"><div class="analysis-title">Formatted Text</div><div class="kv-grid">${info}</div></div>`);
+  }
+  if (formType === 'SMUS' || formType === 'CMUS') {
+    const mhdr = findChunk(chunks, 'MHDR');
+    if (mhdr && mhdr.size >= 8) {
+      const view = new DataView(data.buffer, data.byteOffset + mhdr.dataStart, mhdr.size);
+      const tempo = view.getUint16(0, false);
+      const vol   = view.getUint16(2, false);
+      const bpm   = tempo ? Math.round(60000 / tempo) : 0;
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">Music Header</div>
+        <div class="kv-grid">
+          <div class="kv-key">Tempo</div><div class="kv-val highlight">${tempo} ms/beat ${bpm ? `≈ ${bpm} BPM` : ''}</div>
+          <div class="kv-key">Volume</div><div class="kv-val">${vol} / 255</div>
+        </div>
+      </div>`);
+    }
+  }
+  if (formType === 'RGBN' || formType === 'RGB8') {
+    const bmhd = findChunk(chunks, 'BMHD');
+    if (bmhd) {
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const b = bmhd.dataStart;
+      sections.push(`<div class="analysis-section">
+        <div class="analysis-title">Deep Color Image</div>
+        <div class="kv-grid">
+          <div class="kv-key">Dimensions</div><div class="kv-val highlight">${view.getUint16(b,false)} × ${view.getUint16(b+2,false)} px</div>
+          <div class="kv-key">Color depth</div><div class="kv-val">${formType === 'RGB8' ? '24-bit RGB' : '12-bit RGBN'}</div>
         </div>
       </div>`);
     }
